@@ -19,6 +19,7 @@ from torch.utils.data import DataLoader
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.cuda.amp import GradScaler
+from tqdm import tqdm
 
 from ..models.model import build_model_from_config
 from ..data.dataset import RobustBiometryDataset
@@ -69,7 +70,9 @@ def _train_sameview(cfg, logger):
     for epoch in range(cfg.phase1.epochs):
         student.train(); teacher.eval()
         losses = []
-        for batch in loader:
+        pbar = tqdm(loader, desc=f"[sameview] Epoch {epoch+1}/{cfg.phase1.epochs}",
+                    leave=False, dynamic_ncols=True)
+        for batch in pbar:
             imgs = batch["image"].to(device)
             opt.zero_grad()
             with torch.autocast("cuda", dtype=amp_dtype, enabled=amp_on):
@@ -86,6 +89,8 @@ def _train_sameview(cfg, logger):
                 for p, ep in zip(student.encoder.parameters(), teacher.encoder.parameters()):
                     ep.data.mul_(a).add_(p.data, alpha=1 - a)
             losses.append(loss.item())
+            pbar.set_postfix(loss=f"{sum(losses)/len(losses):.5f}")
+        pbar.close()
         sched.step()
         avg = sum(losses) / max(1, len(losses))
         writer.add_scalar("Loss/Phase1_SSL", avg, epoch)
@@ -191,7 +196,9 @@ def _train_multicrop(cfg, logger):
     for epoch in range(cfg.phase1.epochs):
         student.train()
         losses = []
-        for batch in loader:
+        pbar = tqdm(loader, desc=f"[multicrop] Epoch {epoch+1}/{cfg.phase1.epochs}",
+                    leave=False, dynamic_ncols=True)
+        for batch in pbar:
             crops = [c.to(device) for c in batch["crops"]]
             opt.zero_grad()
             with torch.autocast("cuda", dtype=amp_dtype, enabled=amp_on):
@@ -207,6 +214,8 @@ def _train_multicrop(cfg, logger):
                     ep.data.mul_(a).add_(p.data, alpha=1 - a)
             step += 1
             losses.append(loss.item())
+            pbar.set_postfix(loss=f"{sum(losses)/len(losses):.5f}")
+        pbar.close()
         avg = sum(losses) / max(1, len(losses))
         writer.add_scalar("Loss/Phase1_MultiCrop", avg, epoch)
         logger.info(f"[multicrop] Epoch {epoch+1}/{cfg.phase1.epochs} | DINO loss {avg:.5f}")

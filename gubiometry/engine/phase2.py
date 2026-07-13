@@ -15,6 +15,7 @@ from collections import Counter, defaultdict
 import torch
 from torch.utils.data import DataLoader
 from torch.cuda.amp import GradScaler
+from tqdm import tqdm
 
 from ..config import save_config_json
 from ..constants import TASK_ORDER
@@ -42,7 +43,11 @@ def validate(teacher, loader_val, device, cfg, amp_on, amp_dtype):
     """Run the EMA teacher, score in original pixels with the challenge metric."""
     teacher.eval()
     entries = []
-    for step, batch in enumerate(loader_val):
+    val_total = len(loader_val)
+    if cfg.optim.max_val_batches > 0:
+        val_total = min(val_total, cfg.optim.max_val_batches)
+    for step, batch in enumerate(tqdm(loader_val, total=val_total, desc="val",
+                                      leave=False, dynamic_ncols=True)):
         if cfg.optim.max_val_batches > 0 and step >= cfg.optim.max_val_batches:
             break
         imgs = batch["image"].to(device)
@@ -138,7 +143,13 @@ def train(cfg, logger=None):
         student.encoder.eval()   # LayerNorm-only backbone
         teacher.eval()
         train_losses = []
-        for step, batch in enumerate(loader_train):
+        train_total = len(loader_train)
+        if cfg.optim.max_train_batches > 0:
+            train_total = min(train_total, cfg.optim.max_train_batches)
+        pbar = tqdm(loader_train, total=train_total,
+                    desc=f"Epoch {epoch+1}/{cfg.optim.epochs} [train]",
+                    leave=False, dynamic_ncols=True)
+        for step, batch in enumerate(pbar):
             if cfg.optim.max_train_batches > 0 and step >= cfg.optim.max_train_batches:
                 break
             imgs = batch["image"].to(device)
@@ -165,6 +176,8 @@ def train(cfg, logger=None):
             scaler.update()
             update_ema_phase2(student, teacher, alpha=cfg.optim.ema_alpha)
             train_losses.append(loss.item())
+            pbar.set_postfix(loss=f"{sum(train_losses)/len(train_losses):.4f}")
+        pbar.close()
         scheduler.step()
         avg_train_loss = sum(train_losses) / max(1, len(train_losses))
 
