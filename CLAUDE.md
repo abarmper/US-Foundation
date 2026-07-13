@@ -12,8 +12,8 @@ Phase 2 adds a multi-stage HRNet neck + 9 per-task soft-argmax heads.
 The code lives in the installable **`gubiometry/`** package driven by one CLI and
 YAML configs. `METHOD_CHANGES.md` documents the challenge-specific upgrades layered
 on the original method (and which are paper-affecting). `docs/ARCHITECTURE.md` covers
-the neck design. Not a git repo; no test suite (verification is via CPU smoke tests
-with a dummy backbone — see below).
+the neck design. Git repo (remote: `abarmper/US-Foundation`, private); no test suite (verification is via
+CPU smoke tests with a dummy backbone — see below).
 
 ## Commands
 

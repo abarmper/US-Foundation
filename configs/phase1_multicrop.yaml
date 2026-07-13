@@ -20,7 +20,7 @@ phase1:
   # inherited value from the original repo's launch script with no empirical basis for
   # this dataset; watch logs/phase1.log (DINO loss) and judge convergence from the
   # per-10-epoch checkpoints rather than trusting a fixed count.
-  batch_size: 8
-  lr: 5.0e-5
+  batch_size: 16              # measured ~30GB peak @ bs8 (full unfrozen backbone) -> bs16 fits an idle A100
+  lr: 7.0e-5                  # sqrt-scaled from 5e-5 @ bs8 (same convention as phase2_upgraded's bs16->64)
   out_dim: 256
   n_local_crops: 6
