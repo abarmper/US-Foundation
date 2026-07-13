@@ -216,3 +216,45 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ============================================================
+# Project-specific (dinov2-hrnet-gu-biometry)
+# ============================================================
+
+# Raw / heavy dataset contents -- only data/splits/*.json (small key + GT
+# files) are tracked. See data/README.md for the expected layout.
+data/data/
+data/images/
+data/csv/
+data/*.zip
+data/*.tar*
+
+# Model weights, training runs, logs, tensorboard events -- all reproducible
+# from the training scripts, not tracked in git.
+pretrained/*.pth
+pretrained/*.pt
+runs/
+outputs/
+checkpoints/
+*.pth
+*.pt
+*.ckpt
+events.out.tfevents.*
+
+# Torch hub / model download cache
+.cache/
+torch_cache/
+
+# Generated figures (regenerate via src/visualization/*.py)
+figures/
+*.png
+*.pdf
+!assets/*.png
+!assets/*.pdf
+
+# Generated prediction outputs
+regression_predictions.json
+regression_predictions.zip
+
+# Claude Code machine-local settings
+.claude/settings.local.json

@@ -1,0 +1,18 @@
+# Experiment: Wing loss instead of L1 on the soft-argmax coordinates.
+# = phase2_upgraded + optim.coord_loss=wing.
+run_name: exp_wing_loss
+phase: phase2
+seed: 42
+phase1_weights: pretrained/dinov2_reg_adapted_ep20.pth
+
+model:
+  backbone: {name: dinov2_vitl14_reg, unfreeze_last_n_blocks: 4}
+  neck: {input_mode: multilevel, feature_layers: [5, 11, 17, 23]}
+
+optim:
+  llrd_decay: 0.75
+  dsnt_lambda: 0.1
+  coord_loss: wing        # <-- the experiment
+  wing_omega: 10.0
+  wing_epsilon: 2.0
+  select_metric: challenge_blend

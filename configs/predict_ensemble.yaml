@@ -1,0 +1,24 @@
+# Ensemble x TTA prediction -> submission JSON (+ zip).
+# member_run_dirs are the per-fold runs produced by `gubiometry kfold`.
+run_name: predict_ensemble
+phase: predict
+
+data:
+  data_root: data/data/train_data
+  split_file: splits/train_val_split_keys.json   # predicts on this split's val set...
+  # fold: 0                                       # ...or a specific fold's val set
+
+predict:
+  member_run_dirs:
+    - runs/phase2_upgraded_fold0
+    - runs/phase2_upgraded_fold1
+    - runs/phase2_upgraded_fold2
+    - runs/phase2_upgraded_fold3
+    - runs/phase2_upgraded_fold4
+  checkpoint_name: best_teacher_model.pth
+  tta_canvases: [490, 518, 546]   # multi-scale (all % 14 == 0)
+  tta_intensity: true
+  average_space: coord            # robust; "heatmap" only for same-canvas fold avg
+  out_json: submission.json
+  zip_output: true
+  # gt_json: data/splits/local_eval_gt/internal_ground_truth_val.json  # for `evaluate`

@@ -1,0 +1,16 @@
+# Experiment: add the clinical-measurement auxiliary loss (targets 50% of the score).
+# = phase2_upgraded + optim.measurement_lambda=0.05.
+run_name: exp_measurement_aux
+phase: phase2
+seed: 42
+phase1_weights: pretrained/dinov2_reg_adapted_ep20.pth
+
+model:
+  backbone: {name: dinov2_vitl14_reg, unfreeze_last_n_blocks: 4}
+  neck: {input_mode: multilevel, feature_layers: [5, 11, 17, 23]}
+
+optim:
+  llrd_decay: 0.75
+  dsnt_lambda: 0.1
+  measurement_lambda: 0.05    # <-- the experiment
+  select_metric: challenge_blend

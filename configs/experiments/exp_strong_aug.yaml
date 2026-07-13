@@ -1,0 +1,18 @@
+# Experiment: stronger train augmentation (helps overfit-prone small cardiac tasks).
+# = phase2_upgraded + data.aug_strength=strong.
+run_name: exp_strong_aug
+phase: phase2
+seed: 42
+phase1_weights: pretrained/dinov2_reg_adapted_ep20.pth
+
+model:
+  backbone: {name: dinov2_vitl14_reg, unfreeze_last_n_blocks: 4}
+  neck: {input_mode: multilevel, feature_layers: [5, 11, 17, 23]}
+
+data:
+  aug_strength: strong        # <-- the experiment (none | light | medium | strong)
+
+optim:
+  llrd_decay: 0.75
+  dsnt_lambda: 0.1
+  select_metric: challenge_blend

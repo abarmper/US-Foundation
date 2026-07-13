@@ -1,0 +1,29 @@
+# Produce a Codabench VALIDATION submission (committed format), always ensemble + TTA.
+#   python -m gubiometry predict --config configs/submit_val.yaml
+# -> submission.json (+ submission.zip) : list of {image_path, task_id,
+#    predicted_points_normalized, predicted_points_pixels}, one per val image.
+#
+# member_run_dirs below is the eventual 5-fold ensemble. Until those exist, submit the
+# current model with an override, e.g.:
+#   ... --config configs/submit_val.yaml -o predict.member_run_dirs=runs/p2_baseline_nossl
+run_name: submit_val
+phase: predict
+
+data:
+  data_root: data/data/train_data     # only used to rebuild members; images come from image_dir
+
+predict:
+  image_dir: data/data/val_data       # the challenge validation images (<task>/<file>)
+  member_run_dirs:                     # the 5-fold ensemble (override for a single model)
+    - runs/phase2_upgraded_fold0
+    - runs/phase2_upgraded_fold1
+    - runs/phase2_upgraded_fold2
+    - runs/phase2_upgraded_fold3
+    - runs/phase2_upgraded_fold4
+  checkpoint_name: best_teacher_model.pth
+  tta_canvases: [490, 518, 546]        # multi-scale TTA (all % 14 == 0)
+  tta_intensity: true                  # + gamma views
+  average_space: coord
+  reduce: mean                         # or median
+  out_json: regression_predictions.json   # the zip's inner file must be named this (Codabench)
+  zip_output: true

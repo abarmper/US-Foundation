@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gubiometry"
+version = "0.1.0"
+description = "DINOv2-HRNet multi-task ultrasound landmark detection for the GU/FU Biometry MICCAI 2026 challenge"
+requires-python = ">=3.10"
+# Runtime deps are pinned in requirements.txt (kept as the source of truth for the
+# training environment). Listed loosely here so `pip install -e .` works.
+dependencies = [
+    "torch",
+    "torchvision",
+    "numpy",
+    "pandas",
+    "scipy",
+    "scikit-learn",
+    "PyYAML",
+    "tqdm",
+    "Pillow",
+]
+
+[project.optional-dependencies]
+# Only needed for training-time augmentation, image decoding, and TB logging.
+# Inference / evaluation / metrics run without these.
+train = ["albumentations", "opencv-python-headless", "tensorboard", "matplotlib"]
+
+[project.scripts]
+gubiometry = "gubiometry.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["gubiometry*"]

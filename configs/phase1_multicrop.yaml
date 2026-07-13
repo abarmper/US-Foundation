@@ -1,0 +1,26 @@
+# Phase 1 -- DINO multi-crop SSL domain adaptation.
+# Set model.backbone.name to match the Phase 2 backbone you intend to use
+# (dinov2_vitl14 or dinov2_vitl14_reg); the adapted encoder is backbone-specific.
+run_name: phase1_multicrop
+phase: phase1
+seed: 42
+
+model:
+  backbone:
+    name: dinov2_vitl14_reg    # register variant (default); the Phase-2 backbone must match
+
+data:
+  data_root: data/data/train_data
+  num_workers: 8
+  canvas: 518
+
+phase1:
+  mode: multicrop             # or "sameview"
+  # epochs intentionally unset -> falls back to Phase1Config default (100). 30 was an
+  # inherited value from the original repo's launch script with no empirical basis for
+  # this dataset; watch logs/phase1.log (DINO loss) and judge convergence from the
+  # per-10-epoch checkpoints rather than trusting a fixed count.
+  batch_size: 8
+  lr: 5.0e-5
+  out_dim: 256
+  n_local_crops: 6

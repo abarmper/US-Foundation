@@ -1,0 +1,18 @@
+# Experiment: sqrt task sampling (stops tiny cardiac tasks from being replayed
+# ~100x/epoch and overfitting). = phase2_upgraded + data.sample_temp=0.5.
+run_name: exp_sample_temp
+phase: phase2
+seed: 42
+phase1_weights: pretrained/dinov2_reg_adapted_ep20.pth
+
+model:
+  backbone: {name: dinov2_vitl14_reg, unfreeze_last_n_blocks: 4}
+  neck: {input_mode: multilevel, feature_layers: [5, 11, 17, 23]}
+
+data:
+  sample_temp: 0.5          # <-- the experiment (0=balanced, 1=natural)
+
+optim:
+  llrd_decay: 0.75
+  dsnt_lambda: 0.1
+  select_metric: challenge_blend
