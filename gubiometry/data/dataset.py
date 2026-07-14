@@ -13,6 +13,7 @@ Changes vs the original dataset_final.RobustBiometryDataset:
 
 import os
 import ast
+import sys
 import json
 import numpy as np
 import pandas as pd
@@ -28,8 +29,17 @@ from ..constants import VALID_TASKS
 _PATH_INDEX_CACHE = {}
 
 
+_TRUNCATED_WARNED = set()   # dedupe truncated-file warnings (one line per bad path)
+
+
 def read_rgb(path):
-    """Read an image as RGB uint8. Prefers cv2, falls back to PIL."""
+    """Read an image as RGB uint8. Prefers cv2, falls back to PIL.
+
+    A single truncated/corrupt frame must never abort a multi-hour run: cv2 returns
+    None on such a file and strict PIL *raises* (`image file is truncated`), so we
+    retry that read with LOAD_TRUNCATED_IMAGES (partial decode, missing rows padded)
+    and warn once per path so the offending file surfaces without spamming.
+    """
     try:
         import cv2
         img = cv2.imread(path)
@@ -37,9 +47,23 @@ def read_rgb(path):
             return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     except Exception:
         pass
-    from PIL import Image
-    with Image.open(path) as im:
-        return np.asarray(im.convert("RGB"))
+    from PIL import Image, ImageFile
+    try:
+        with Image.open(path) as im:
+            return np.asarray(im.convert("RGB"))
+    except OSError:
+        prev = ImageFile.LOAD_TRUNCATED_IMAGES
+        ImageFile.LOAD_TRUNCATED_IMAGES = True
+        try:
+            with Image.open(path) as im:
+                arr = np.asarray(im.convert("RGB"))
+        finally:
+            ImageFile.LOAD_TRUNCATED_IMAGES = prev
+        if path not in _TRUNCATED_WARNED:
+            _TRUNCATED_WARNED.add(path)
+            print(f"[read_rgb] WARNING: truncated/corrupt image loaded partially: {path}",
+                  file=sys.stderr, flush=True)
+        return arr
 
 
 class RobustBiometryDataset(Dataset):
