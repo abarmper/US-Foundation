@@ -1,0 +1,121 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Pipeline" id="pipeline-diagram">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ===================== PANEL LABELS ===================== -->
+        <mxCell id="labelA" value="(a) Full Pipeline" style="text;html=1;fontSize=16;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="10" width="260" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="labelB" value="(b) Multi-Stage HRNet Neck (detail)" style="text;html=1;fontSize=16;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="520" y="10" width="400" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== PANEL A: FULL PIPELINE ===================== -->
+        <mxCell id="a1" value="Input Ultrasound Frame&#10;(518x518)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="60" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a2" value="DINOv2-L/14 Encoder&#10;(Phase-1 domain-adapted;&#10;last 4 blocks + LayerNorm unfrozen)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="140" width="220" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a3" value="Patch Token Grid&#10;37x37, 1024 channels" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="40" y="230" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a4" value="Multi-Stage HRNet Neck&#10;(TrueHRNetNeck -- see panel b)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="40" y="310" width="220" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a5" value="Fused Feature Map&#10;148x148, 128 channels" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="40" y="400" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a6" value="Task Routing&#10;(task-homogeneous batch --&#10;9 tasks: A4C, AOP, FA, FUGC,&#10;HC, IVC, PLAX, PSAX, fetal_femur)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="480" width="220" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a7" value="Task-Specific Head&#10;(2x Conv-GroupNorm-ReLU,&#10;Dropout2d, resize to 128x128,&#10;1x1 projection)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="580" width="220" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a8" value="Soft-Argmax&#10;(temperature tau=10.0)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="40" y="680" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a9" value="Predicted Keypoints (x, y)&#10;518-canvas" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="760" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="eA1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="a1" target="a2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eA2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="a2" target="a3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eA3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="a3" target="a4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eA4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="a4" target="a5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eA5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="a5" target="a6"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eA6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="a6" target="a7"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eA7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="a7" target="a8"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eA8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="a8" target="a9"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- dashed link showing panel (a)'s neck box expands into panel (b) -->
+        <mxCell id="eLink" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#b85450;endArrow=none;startArrow=none;" edge="1" parent="1" source="a4" target="b0"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ===================== PANEL B: NECK DETAIL ===================== -->
+        <mxCell id="b0" value="DINOv2 grid (1024, 37x37)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="620" y="60" width="220" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Stage 1 -->
+        <mxCell id="b1" value="B1 init&#10;conv 3x3 (37x37, w1=128)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="520" y="140" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" value="B2 init&#10;deconv (74x74, w2=96)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="760" y="140" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="eb0b1" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="b0" target="b1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eb0b2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="b0" target="b2"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="ex1" value="Exchange Unit 1&#10;(B1 &#8596; B2, bidirectional)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="620" y="220" width="260" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="eb1ex1" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="b1" target="ex1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eb2ex1" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="b2" target="ex1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- Stage 2 -->
+        <mxCell id="b1r" value="B1 refine&#10;conv 3x3 (37x37, w1)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="500" y="310" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="b2r" value="B2 refine&#10;conv 3x3 (74x74, w2)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="700" y="310" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="b3" value="B3 spawn&#10;deconv from B2 (148x148, w3=64)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="900" y="310" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="eex1b1r" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="ex1" target="b1r"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eex1b2r" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="ex1" target="b2r"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eb2rb3" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="b2r" target="b3"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="ex2" value="Exchange Unit 2&#10;(B1 &#8596; B2 &#8596; B3, all pairs)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="620" y="400" width="320" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="eb1rex2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="b1r" target="ex2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eb2rex2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="b2r" target="ex2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eb3ex2" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="b3" target="ex2"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- Final fusion -->
+        <mxCell id="fuse" value="Final Fusion&#10;1x1 conv + upsample each branch&#10;to 148x148, element-wise sum" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="640" y="490" width="280" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="eex2fuse" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="ex2" target="fuse"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="bout" value="-&gt; 128 channels @ 148x148&#10;(feeds panel (a) step: Task Routing)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="640" y="580" width="280" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="efuseout" style="edgeStyle=orthogonalEdgeStyle;html=1;" edge="1" parent="1" source="fuse" target="bout"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

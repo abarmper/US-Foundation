@@ -252,6 +252,16 @@ figures/
 !assets/*.png
 !assets/*.pdf
 
+# LaTeX build artifacts (regenerate via pdflatex/bibtex/latexmk)
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.out
+*.toc
+
 # Generated prediction outputs
 regression_predictions.json
 regression_predictions.zip

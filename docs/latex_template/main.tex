@@ -1,0 +1,273 @@
+% main.tex -- LNCS-format paper skeleton for the Ultrasound Biometry
+% Foundation Model work (DINOv2 SSL domain adaptation + HRNet-style neck).
+% Based on Springer's llncs.cls / samplepaper.tex (v2.21, 2022/01/12).
+%
+% Compile with pdflatex + bibtex, e.g.:
+%   pdflatex main && bibtex main && pdflatex main && pdflatex main
+%
+\documentclass[runningheads]{llncs}
+
+\usepackage[T1]{fontenc}
+\usepackage{microtype} % better justification/hyphenation -- fixes several
+                       % overfull-hbox margin overflows (e.g. long compound
+                       % hyphenated words like "task-homogeneous") without
+                       % changing any wording
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{booktabs}   % clean horizontal-rule tables (\toprule/\midrule/\bottomrule)
+\usepackage{multirow}   % multi-row cells (clinical-domain grouping in tab:codabench-results)
+\usepackage{subcaption} % side-by-side subfigures, if needed later
+\raggedbottom           % disable flushbottom's inter-paragraph stretch glue --
+                        % without this, sparsely-filled pages (e.g. the
+                        % Introduction) visibly space paragraphs further apart
+                        % than dense pages, even though the source formatting
+                        % is identical
+%\usepackage{float}      % [H] float placement -- keeps tables/figures exactly
+                        % where declared in the source instead of drifting to
+                        % the top of a later page (matters while sections are
+                        % still placeholder-only with little body text)
+
+% Uncomment for blue, roman-font hyperlinks per Springer's eBook style:
+%\usepackage{color}
+%\usepackage{hyperref}
+%\renewcommand\UrlFont{\color{blue}\rmfamily}
+%\urlstyle{rm}
+
+\begin{document}
+
+\title{Self-Supervised Domain Adaptation with DINOv2-HRNet for Multi-Task Ultrasound Landmark Detection}
+\titlerunning{SSL Domain Adaptation with DINOv2-HRNet for Ultrasound Landmarks}
+
+\author{Anna Panagiotakopoulou\inst{1}\orcidID{0009-0006-0957-6331} \and
+Alexandros Barberis\inst{1}\orcidID{0000-0000-0000-0000} \and
+Vasileios E. Katsigiannis\inst{1}\orcidID{0009-0003-7464-0959} \and
+George K. Matsopoulos\inst{1}\orcidID{0000-0002-2600-9914}}
+
+\authorrunning{A. Panagiotakopoulou et al.}
+
+%\institute{Your Institution, City, Country\\
+\institute{Biomedical Engineering Laboratory, School of Electrical and Computer Engineering, \\
+National Technical University of Athens, Athens, Greece\\
+%\email{you@institution.edu}}
+\email{annapan@biomed.ntua.gr, amparmperis@biomed.ntua.gr,
+vassiliskat@biomed.ntua.gr, gmatsopoulos@biomed.ntua.gr}}
+
+\maketitle
+
+\begin{abstract}
+%Accurate ultrasound biometry relies on precise anatomical landmark localization, yet building a unified model across heterogeneous ultrasound tasks remains challenging because image appearance, acquisition protocols, anatomical scale, and landmark definitions vary substantially across clinical domains. In the context of the Generalization-oriented Ultrasound Biometry Challenge (GU\_Biometry), we propose a two-stage foundation-model pipeline for generalizable multi-task ultrasound landmark detection across nine fetal, gynecologic, cardiac, and vascular biometry tasks. Rather than treating each task as an isolated problem, we formulate biometry as cross-domain representation learning under limited keypoint supervision and distribution shift. First, a student--teacher DINOv2 encoder is adapted on unlabeled ultrasound frames by maximizing patch-token consistency between a trainable student and an exponential-moving-average teacher, enabling ultrasound-specific anatomical and textural representations to be learned without keypoint labels. Second, the adapted encoder is combined with an HRNet-style multi-resolution neck designed to construct and fuse localization-relevant spatial representations from transformer patch features. Task-specific convolutional heads produce per-keypoint logits, from which continuous landmark coordinates are obtained via temperature-scaled soft-argmax. To study the effect of ultrasound domain adaptation, we compare multiple self-supervised DINOv2 checkpoints during downstream landmark localization. The proposed design targets the challenge evaluation criteria by optimizing landmark accuracy, measured by mean radial error, and downstream biometric measurement reliability, measured by parameter prediction error.
+Accurate ultrasound biometry relies on precise anatomical landmark localization, yet building a unified model across heterogeneous ultrasound tasks remains challenging. Image appearance, acquisition protocols, and anatomical scale vary substantially across clinical domains, exacerbated by the severe scarcity of large-scale annotated datasets. To address the Generalization-oriented Ultrasound Biometry (GU\_Biometry) Challenge, we propose a two-stage foundation-model pipeline for generalizable multi-task landmark detection across nine diverse clinical tasks. Rather than treating each task as an isolated problem, we formulate biometry as cross-domain representation learning under limited keypoint supervision and distribution shift. First, a DINOv2 encoder is adapted on unlabeled ultrasound frames via DINO-style multi-crop self-distillation between a trainable student and an EMA teacher, capturing domain-specific sonographic textures without eroding the foundation model's semantic priors. Second, the adapted encoder is coupled with a domain-agnostic, HRNet-style multi-resolution neck designed to reconstruct localization-relevant spatial hierarchies directly from transformer patch features. Task-specific convolutional heads then utilize soft-argmax for direct, sub-pixel coordinate regression.
+
+\keywords{Ultrasound biometry \and Self-supervised learning \and DINOv2 \and
+Landmark localization \and HRNet.}
+\end{abstract}
+
+
+\section{Introduction}
+%Ultrasound biometry converts a small set of anatomical landmarks into clinically meaningful measurements, such as fetal biometric parameters, labor progression indices, and cardiac structural measurements. While landmark localization has been studied in individual ultrasound applications, the GU\_Biometry setting poses a more demanding problem: a single model must generalize across clinical domains, scanner vendors, acquisition protocols, anatomical scales, and landmark definitions. Multi-centre benchmarks demonstrate that such site and scanner variability substantially degrades generalization in single-task models \cite{avisdris2022biometrynet,divece2026multicentre}. This extreme heterogeneity makes purely task-specific supervision insufficient, particularly when labeled data are scarce and imbalanced across tasks. The challenge therefore tests not only spatial landmark localization accuracy, but also whether a model can preserve clinically relevant measurement reliability under cross-domain distribution shift \cite{gu_biometry}.
+Ultrasound biometry converts a small set of anatomical landmarks into clinically meaningful measurements, such as fetal biometric parameters~\cite{salomon2019isuog}, labor progression indices~\cite{ghi2018isuog}, and cardiac structural measurements~\cite{mitchell2019comprehensive}. Landmark localization has been studied extensively with single-task models~\cite{avisdris2022biometrynet,bai2026iugc,smistad2020real,yim2024assessment}, but multi-centre benchmarks reveal that site and scanner variability substantially degrades generalization~\cite{bai2026beyond,divece2026multicentre}. This heterogeneity renders task-specific supervision insufficient, testing whether a unified pipeline can preserve spatial accuracy and measurement reliability under the cross-domain distribution shift central to the challenge~\cite{gu_biometry,deng2026baseline}.
+
+Foundation models have shifted medical image analysis toward reusable representation learning from unlabeled data: self-supervised transformers like DINOv2 learn transferable visual features without manual labels~\cite{oquab2023dinov2}, though direct transfer to sonography remains challenging given ultrasound's distinct texture statistics, acquisition physics, and artifacts~\cite{guan2022domain}. Recent ultrasound foundation models~\cite{jiao2024usfm,ambsdorf2025general,maani2025fetalclip,jiang2025ultrafedfm} motivate domain-specific pretraining, yet target image-level classification, dense prediction, or few-shot analysis, leaving unified sparse landmark localization across biometric domains underexplored.
+
+%Landmark-based biometry imposes different spatial requirements from image-level classification and dense prediction. The model must capture global anatomical context while preserving fine spatial information needed to estimate distances, diameters, and angles from sparse keypoints. Vision transformers provide strong semantic representations, but their patch-token structure can limit the direct availability of high-resolution spatial detail for coordinate prediction. This motivates pairing transformer foundation features with convolutional or multi-resolution decoders that recover localization-sensitive representations. Our design follows this principle in the landmark setting: DINOv2 provides semantic, ultrasound-adapted patch features, while an HRNet-style multi-resolution exchange neck~\cite{sun2019hrnet} converts them into high-resolution features for soft-argmax coordinate prediction. 
+%Landmark-based biometry imposes different spatial requirements from image-level classification. The model must capture global anatomical context while preserving fine spatial information. While self-supervised Vision Transformers like DINOv2 learn highly transferable patch-level features~\cite{oquab2023dinov2}, their coarse token resolution limits direct coordinate prediction. This motivates pairing foundation features with an HRNet-style multi-resolution neck~\cite{sun2019hrnet}. We chose this design over standard encoder-decoder architectures (e.g., U-Net) specifically to maintain continuous high-resolution spatial representations throughout the network, rather than bottlenecking and reconstructing them, which is critical for fine coordinate estimation. 
+Landmark-based biometry requires global context alongside fine spatial precision. Vision Transformers extract robust features~\cite{dosovitskiy2021image,oquab2023dinov2} and have been adapted for keypoints (e.g., TransPose~\cite{yang2021transpose}, ViTPose~\cite{xu2022vitpose}), but their coarse token resolution limits sub-pixel coordinate prediction---even hierarchical variants like Swin~\cite{liu2021swin} still rely on progressive downsampling---so we instead pair foundation features with an HRNet-style multi-resolution neck~\cite{sun2019hrnet}, chosen over standard U-Net architectures to maintain continuous high-resolution spatial detail throughout the network, critical for fine coordinate estimation.
+
+Our main contributions are: (i) a two-stage DINOv2-HRNet pipeline that separates domain-level ultrasound representation learning from task-specific spatial localization; (ii) a study of how unlabeled SSL adaptation duration affects downstream landmark accuracy; (iii) a metric-aligned validation and ensembling strategy that stabilizes generalization on the label-scarce cardiac tasks dominating the macro-average.
+
+\section{Methodology}
+%We formulate multi-task ultrasound landmark detection as a two-stage pipeline that separates domain adaptation from task-specific spatial coordinate prediction.
+
+\begin{figure}[tb]
+\centering
+\includegraphics[width=\textwidth]{Phase1_new-Page-1.pdf}
+\caption{Overview of the two-stage pipeline. A domain-adapted, register-variant DINOv2-L/14 encoder provides $37\times37$ patch-token grids from four intermediate depths, which a multi-level HRNet-style neck fuses before task-specific soft-argmax coordinate decoding.}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{Phase 1: Self-Supervised Domain Adaptation}
+\label{sec:phase1}
+%To close the domain gap between natural images and sonography (texture statistics, speckle patterns, acoustic shadowing), we adapt a DINOv2-Large encoder to unlabeled ultrasound frames using a student--teacher self-supervised objective. 
+%A trainable student and an exponential-moving-average (EMA) teacher are shown the same frames, and the student is optimized to maximize patch-token cosine similarity with the teacher:
+%We adapt DINOv2-L/14 to unlabeled ultrasound frames using a student--teacher objective that aligns patch-token embeddings between a trainable student and an EMA teacher. Rather than employing aggressive spatial contrastive crops, both the student and teacher branches process the identical full-frame input tensor without asymmetric distortions. This conservative alignment acts as a domain-targeted feature smoother, optimizing the student to maximize patch-token cosine similarity with an exponential-moving-average (EMA) teacher:
+We adapt the register-variant DINOv2-L/14 encoder~\cite{oquab2023dinov2} to unlabeled ultrasound frames using DINO-style multi-crop self-distillation~\cite{caron2021dino}. To enforce scale-invariance, we adopt a local-to-global distillation strategy generating 8 augmented views ($V$) via independent random-resized-crop, affine, and photometric augmentations: 2 \emph{global} crops (covering 50--100\% of the image area, resized to the $518\times518$ canvas) and 6 \emph{local} crops (10--40\% of the area, resized to $98\times98$). During pre-training, only the student network processes the local crops, explicitly forcing it to predict global anatomical context from localized, texture-dominated acoustic patches---particularly relevant in sonography, where the model must correlate local speckle signatures with macro-anatomical geometries.
+
+A trainable student processes all 8 views, while an exponential-moving-average (EMA) teacher processes only the 2 global views. Both branches mean-pool their patch-token output and project it through a shared-architecture two-layer MLP head into a $256$-d embedding, $z_s^{(j)}$ for the student's view $j$ and $z_t^{(i)}$ for the teacher's view $i$. The teacher's target is centered against a running batch-mean estimate $c$ (EMA momentum $0.9$, preventing collapse) and sharpened at temperature $\tau_t{=}0.04$, giving $q_i = \mathrm{softmax}\big((z_t^{(i)}-c)/\tau_t\big)$; the student predicts $p_j = \mathrm{softmax}\big(z_s^{(j)}/\tau_s\big)$ at temperature $\tau_s{=}0.1$. The student is optimized to match the teacher's distribution from every view except its own matching global crop---forcing consistency between the student's global-\emph{and}-local views and the teacher's global-only view:
+
+\begin{equation}
+\mathcal{L}_{\text{SSL}} = \sum_{i=1}^{2}\ \sum_{\substack{j=1 \\ j \neq i}}^{V} -\, q_i \log p_j.
+\label{eq:ssl-loss}
+\end{equation}
+The teacher receives no gradient; it is instead updated as $\theta_t \leftarrow a\,\theta_t + (1-a)\,\theta_s$, with $a$ annealed from $0.99$ to $1.0$ on a cosine schedule over training (Figure~\ref{fig:pipeline}). Extended self-distillation exposure risks representational drift away from the foundation priors. 
+
+\subsection{Phase 2: Multi-Stage HRNet Neck and Task-Specific Heads}
+\label{sec:phase2}
+To recover fine spatial resolution from the coarse $37\times37$ transformer tokens, we implement a multi-stage HRNet-style neck: parallel, multi-resolution branches that repeatedly exchange information bidirectionally, rather than being computed independently and fused only once (Figure~\ref{fig:neck-zoom}).
+
+\begin{figure}[tb]
+\centering
+\includegraphics[width=\textwidth]{Phases_architecture-phase2_zoom_corr-5.pdf}
+%\caption{Detailed view of Phase 2 (expanding the "Neck" and "Regression" black boxes of Fig.~\ref{fig:pipeline}): branch spawning, the two exchange units, and the final multi-scale fusion into a $148\times148$, 128-channel representation, followed by task routing, the nine task-specific heads, and soft-argmax coordinate decoding.}
+\caption{Detailed Phase~2 architecture: HRNet-style branch spawning and exchange, multi-scale fusion into a $148\times148$, 128-channel feature map, task routing, task-specific heads, and soft-argmax coordinate decoding.}
+\label{fig:neck-zoom}
+\end{figure}
+
+Given a $518\times518$ input, the adapted register-variant DINOv2-L/14 encoder outputs, at every one of its 24 transformer blocks, a $37\times37$ grid of 1024-dimensional patch tokens (matching the encoder's 14-pixel patch stride); spatial resolution is constant with depth, only token semantics change. We tap four intermediate depths---blocks 5, 11, 17, and 23---and route each $37\times37\times1024$ grid directly into the neck's branch-spawning convolutions, which perform channel compression and spatial projection simultaneously without a dedicated $1\times1$ bottleneck.
+Unlike standard HRNet designs, which build multi-resolution features bottom-up from image-space representations, our neck operates top-down from these already-semantic $37\times37$ DINOv2 token grids: higher-resolution branches are expanded outward from coarse features rather than obtained by progressive downsampling. Concretely, $B_1$ ($37\times37$) and $B_2$ ($74\times74$) are spawned directly and simultaneously from the two deepest taps---block 23 and block 17, respectively---via independent convolutional and transposed-convolutional projections, followed by an initial bidirectional exchange. $B_3$ ($148\times148$) is instead bootstrapped independently from the two shallowest taps (blocks 11 and 5), each projected through its own two-stage transposed-convolution stack and summed---rather than derived from $B_2$---after which all three branches participate in a dense all-pairs exchange.
+Downsampling paths use chained stride-2 $3\times3$ convolutions with GroupNorm: a single stride-2 step for a $2\times$ resolution gap and two chained steps for a $4\times$ gap, avoiding a single stride-4 projection. Each upsampling path uses a $1\times1$ channel projection followed by bilinear interpolation. Each branch is updated by summing its own features with the resampled projections of the other branch(es), followed by ReLU: the two-branch exchange updates $b_1$ and $b_2$ this way, and the three-branch, all-pairs exchange applies the analogous update to each of $b_1$, $b_2$, and $b_3$. This bidirectional exchange serves a concrete purpose for ultrasound: the coarse-to-fine path gives the high-resolution branches a semantic anchor so fine-detail detection is less likely to latch onto speckle noise or acoustic shadowing as if it were a real edge, while the fine-to-coarse path feeds sharp structural boundaries back to the coarse branch, preventing its semantic map from becoming under-localized.
+Because batches are task-homogeneous during training but evaluation aggregates across heterogeneous tasks, BatchNorm running statistics can become poorly matched to test-time feature distributions. We therefore use GroupNorm throughout the neck and task heads, since it normalizes per sample and does not depend on the other images in the batch.
+
+\subsubsection{Task-specific heads and coordinate extraction.} 
+After the final exchange, all branches are aligned to a common $148\times148$, 128-channel representation: $B_1$ and $B_2$ are projected and bilinearly upsampled, while $B_3$ is channel-projected only; the three are then fused by element-wise summation. Each task-homogeneous batch is then dispatched, by its (sampler-guaranteed) task identity rather than a learned routing mechanism, to one of nine independent task-specific heads. Each head applies two Conv-GroupNorm-ReLU blocks with 2D dropout to the fused $148\times148$ representation, and produces per-keypoint logits $\ell_k$ via a final $1\times1$ projection.
+%Continuous coordinates are extracted via soft-argmax:
+%\begin{equation}
+%p_k = \text{softmax}(\tau \cdot \ell_k), \qquad
+%(\hat{x}_k, \hat{y}_k) = \Big(\sum_{(u,v)} p_k(u,v)\, u,\ \sum_{(u,v)} p_k(u,v)\, v\Big) \cdot \frac{518}{H},
+%\label{eq:softargmax}
+%\end{equation}
+%with temperature $\tau=10.0$ and $H$ the logit resolution ($128$). The model is trained with a masked $L_1$ loss: the mean Euclidean distance between predicted and ground-truth coordinates, averaged only over the visible keypoints of the current task, avoiding target-heatmap generation and the amplitude and per-task scale tuning that heatmap-based losses require entirely. Batches are sampled task-homogeneously (Section~\ref{sec:training-details}).
+Coordinates are then extracted via soft-argmax, a temperature-scaled softmax over the flattened logits treated as a differentiable spatial expectation~\cite{nibali2018numerical}:
+\begin{equation}
+p_k = \text{softmax}(\tau \cdot \ell_k), \qquad
+(\hat{x}_k, \hat{y}_k) = \Big(\sum_{(u,v)} p_k(u,v)\, u,\ \sum_{(u,v)} p_k(u,v)\, v\Big) \cdot \frac{518}{H},
+\label{eq:softargmax}
+\end{equation}
+with temperature $\tau=10.0$ and $H$ the logit resolution ($148$). At inference these canvas-space coordinates are inverse-letterboxed back to original-image pixels---the space the official challenge metric is computed in---so validation, checkpoint selection, and reporting all optimize the real objective rather than a canvas-space proxy. The model is trained with a masked $L_1$ loss, reweighted per sample by that image's own letterbox scale factor ($\max(h,w)/\text{canvas}$) so residuals are measured in original-pixel units matching the metric's scale, over the visible keypoints $\mathcal{K}$ of the current task, plus a light DSNT-style regularizer~\cite{nibali2018numerical} that keeps each predicted heatmap tight and unimodal without reintroducing a fixed heatmap-matching target. Unlike direct fully-connected regression, which discards spatial feature maps, or standard heatmap matching, which suffers from argmax quantization errors, soft-argmax yields continuous, sub-pixel coordinates directly from the probability map. This entirely avoids the need for empirical tuning of target-heatmap Gaussian scales.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Experiments}
+\subsection{Dataset and Preprocessing}
+We evaluate on the GU\_Biometry MICCAI 2026 Challenge dataset~\cite{gu_biometry}, spanning multi-vendor 2D ultrasound across three clinical domains (intrapartum, prenatal, and cardiac) and nine distinct biometric tasks, each defining landmarks for a different clinical measurement. The released training data comprise 197{,}938 images in total: 6{,}768 labeled and 191{,}170 unlabeled (a $\sim$3.4\% labeled fraction). Both pools are highly imbalanced across tasks: labeled counts range from $\sim$4{,}000 (AoP) to under 100 (IVC, PLAX, PSAX), and unlabeled counts are similarly skewed---fetal femur has none at all. For supervised training, the labeled set is split 80\%/20\%, yielding 5{,}414 training and 1{,}354 validation images.
+
+Native image sizes vary substantially across tasks (e.g., median $336\times544$ for FUGC to $768\times1024$ for FA); to preserve landmark geometry for the DINOv2 encoder, all images undergo an aspect-ratio-preserving resize and zero-padding to a $518\times518$ canvas, followed by ImageNet pixel normalization. On top of this base preprocessing, Phase~2 supervised training applies moderate augmentation (affine scale up to $\pm5\%$, translation up to $\pm10\%$, rotation up to $\pm30^\circ$, brightness/contrast $\pm0.2$, a gamma-or-CLAHE choice, and light Gaussian noise), Phase~1 unlabeled adaptation applies a stronger, fixed recipe (rotation up to $\pm45^\circ$, gamma/contrast changes, CLAHE, Gaussian blur and noise) to encourage robustness to acquisition variability, and validation uses only the base preprocessing, with no augmentation (inference additionally applies TTA, Section~\ref{sec:training-details}).
+
+\subsection{Implementation Details}
+All experiments were executed on a single NVIDIA A100-SXM4-80GB GPU with a batch size of 64. Training uses bf16 mixed precision with gradient-norm clipping and AdamW (weight decay excluded on norm/bias parameters, dimensionality $<2$; base LR $2\times10^{-4}$, 15-epoch linear warmup, 150-epoch cosine decay). The backbone uses LLRD (factor $0.75$), starting at $0.1\times$ base LR for the last four unfrozen blocks. \label{sec:training-details}A Phase~2 EMA teacher ($\alpha=0.999$) is maintained for stabilized validation, early stopping (patience 40), and final inference. A temperature-scaled ($\tau=0.5$) task-homogeneous sampler allocates per-task batches in proportion to (task size)$^{0.5}$, damping AoP's $\sim$40$\times$ raw imbalance over the smallest cardiac tasks to a $\sim$6$\times$ replay-rate gap. Checkpoint selection directly optimizes a macro-averaged, per-task-normalized blend of landmark and clinical-measurement error in original-pixel space, mirroring the official challenge scoring; final reported results use the same native-resolution metric, evaluated by the official Codabench server.
+
+For the official submission, we additionally train five Phase-2 models via stratified 5-fold cross-validation (task-stratified, seed 42) and ensemble them at inference: each fold model's EMA teacher predicts under safe multi-scale test-time augmentation (TTA) at three canvases ($490$, $518$, $546$px, all divisible by the 14-pixel patch stride) plus intensity (gamma) jitter---deliberately excluding keypoint flips, since landmarks are semantically ordered and not flip-invariant. Predictions are averaged across folds and TTA views directly in original-pixel coordinate space, which is robust even when ensemble members differ in backbone or neck configuration.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Results}
+
+\subsection{Official Challenge Evaluation}
+Table~\ref{tab:codabench-results} reveals that performance varies substantially across domains, with lower errors on FUGC and AoP and higher landmark error on IVC, PSAX, and HC, reflecting the heterogeneity of anatomy, image quality, and task-specific annotation structure.
+
+\begin{table}[tb]
+\caption{Quantitative evaluation on the official GU\_Biometry Codabench evaluation. MRE measures landmark localization error in pixels; MAE measures the derived clinical parameter error.}
+\label{tab:codabench-results}
+\centering
+\begin{tabular}{llrrr}
+\hline
+\textbf{Clinical domain} & \textbf{Task / Target view} & \textbf{$N$} & \textbf{MRE $\downarrow$} & \textbf{MAE $\downarrow$} \\
+\hline
+\multicolumn{5}{l}{\textbf{Prenatal \& Gynecologic}} \\
+ & Head Circumference (HC) & 215 & 45.49 & 69.70 \\
+ & Fetal Abdomen (FA)      & 188 & 22.07 & 96.04 \\
+ & Fetal Femur             & 62  & 25.61 & 17.96 \\
+ & Cervical Segm. (FUGC)   & 20  & \textbf{9.51}  & 10.62 \\
+\hline
+\multicolumn{5}{l}{\textbf{Intrapartum}} \\
+ & Labor Progression (AoP) & 60  & 15.28 & \textbf{8.67} \\
+\hline
+\multicolumn{5}{l}{\textbf{Cardiac \& Vascular}} \\
+ & Parasternal Long (PLAX)  & 26 & 20.97 & 12.27 \\
+ & Apical 4-Chamber (A4C)   & 20 & 25.66 & 22.08 \\
+ & Parasternal Short (PSAX) & 18 & 43.43 & 28.99 \\
+ & Inferior Vena Cava (IVC) & 10 & 54.35 & 32.99 \\
+\hline
+\textbf{Overall Summary} & \textbf{Unweighted Average} & \textbf{619} & \textbf{29.15} & \textbf{33.26} \\
+\hline
+\end{tabular}
+\end{table}
+
+
+\subsection{Effect of Self-Supervised Pretraining Duration}
+\label{sec:ssl-duration}
+% Compare Phase-2 downstream MRE when initialized from Phase-1 checkpoints
+% at epoch 20 / 40 / 60. Reference Table~\ref{tab:ssl-duration} and
+% Fig.~\ref{fig:feature-maps} (qualitative PCA progression).
+%Table~\ref{tab:ssl-duration} reports Codabench MRE and MAE when Phase 2 is initialized from Phase-1 checkpoints of increasing SSL duration.
+As shown in Table~\ref{tab:ssl-duration}, the epoch-20 checkpoint gives the lowest mean MRE, with MRE increasing monotonically from epoch~20 to epoch~60; MAE instead is lowest at epoch~60. One possible explanation is that longer adaptation slightly blurs fine-grained spatial tokenization (worsening MRE) while continuing to refine the semantic clustering of anatomical structures (improving MAE). As raw landmark precision is our primary target, we find the shortest Phase~1 schedule tested here already sufficient for localization, supporting the use of an early-stopped Phase~1 encoder.
+
+\begin{table}
+\caption{Codabench evaluation by Phase-1 SSL checkpoint duration used to initialize Phase 2: mean radial error (MRE, px) and mean absolute clinical parameter error (MAE), averaged over all nine tasks.}
+\label{tab:ssl-duration}
+\centering
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Phase-1 checkpoint & ep20 & ep40 & ep60 \\
+\midrule
+Mean MRE & \textbf{28.09} & 29.15 & 29.98 \\
+Mean MAE & 32.95 & 33.26 & \textbf{31.59} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%Figure~\ref{fig:epoch-progression} provides the qualitative counterpart of this ablation by visualizing DINOv2 patch-token PCA maps across the same SSL checkpoints.
+%Figure~\ref{fig:epoch-progression} shows the qualitative counterpart of this
+%ablation: DINOv2 patch-token PCA feature maps at each of the same three
+%checkpoint durations (epoch 20, 40, 60), for one representative sample per
+%task.
+
+%\begin{figure}
+%\centering
+%\includegraphics[width=\textwidth]{../dino_v2_hrnet/visualizations/figures/fig2_variant_seed0.pdf}
+%\caption{Progression of DINOv2 patch-token PCA feature maps across SSL
+%domain-adaptation epochs (20, 40, 60) for one representative sample per
+%task, alongside the original and preprocessed (letterboxed $518\times518$)
+%input images.}
+%\label{fig:epoch-progression}
+%\end{figure}
+Qualitative results of the domain-adapted PCA feature maps and final landmark predictions are shown in Fig.~\ref{fig:feature-maps} and Fig.~\ref{fig:best-per-task}.
+%\subsection{Qualitative Analysis}
+Figure~\ref{fig:feature-maps} shows the same PCA-of-patch-tokens view for the final (ep60) encoder across all nine task domains, complementing the epoch-wise progression above.
+Figure~\ref{fig:best-per-task} shows the lowest-MRE validation example for four representative tasks spanning different clinical domains (intrapartum, fetal, cardiac, and vascular), illustrating the best-case localization behavior of the final model.
+This trade-off suggests that while extended adaptation slightly blurs fine-grained spatial tokenization (worsening MRE), it improves the semantic clustering of distinct anatomical structures, yielding more robust clinical parameter estimates (improving MAE).
+
+\begin{figure}[tb]
+\centering
+\includegraphics[width=\textwidth]{fig1_feature_maps_transposed.pdf}
+\caption{Original ultrasound frames (top row) and their corresponding
+DINOv2 patch-token PCA feature maps (bottom row) across all nine task
+domains, using the Phase-1 SSL-adapted encoder.}
+\label{fig:feature-maps}
+\end{figure}
+
+\begin{figure}[tb]
+\centering
+\includegraphics[width=\textwidth]{fig_best_per_task_row.pdf}
+\caption{Best validation case (lowest MRE) for four representative tasks spanning different clinical domains: AoP (intrapartum), HC (fetal), A4C (cardiac), and IVC (vascular). Ground-truth (green) vs.\ predicted (red) keypoints, with the per-case MRE annotated.}
+\label{fig:best-per-task}
+\end{figure}
+
+%\begin{figure}
+%\centering
+%\includegraphics[width=\textwidth]{../dino_v2_hrnet/visualizations/figures/softargmax_heatmaps/fig_softargmax_HC.pdf}
+%\caption{Soft-argmax probability heatmaps for one HC validation case: each panel shows a keypoint's softmax probability map (temperature $\tau=10.0$) with a zoomed inset revealing the sharply peaked distribution around the ground-truth (green) and predicted (cyan) location.}
+%\label{fig:softargmax-heatmap}
+%\end{figure}
+
+\section{Conclusion}
+We presented a two-stage DINOv2-HRNet pipeline for multi-task ultrasound landmark detection, coupling domain-targeted self-supervised adaptation with a top-down, multi-resolution spatial decoder to achieve competitive performance across nine heterogeneous clinical tasks. Our ablation further reveals a genuine trade-off in SSL adaptation duration (Section~\ref{sec:ssl-duration}): shorter Phase~1 schedules favor raw landmark precision (MRE), while longer schedules favor clinically-oriented parameter accuracy (MAE), an interaction that may warrant per-task adaptation budgets rather than a single global stopping point. Future work will investigate asymmetric multi-crop adaptation and geometry-aware pseudo-labeling, leveraging anatomical constraints to safely exploit the massive unlabeled corpus for semi-supervised coordinate regression.
+
+\begin{credits}
+\subsubsection{\ackname} % Funding / acknowledgments, if any.
+NVIDIA A100 Tensor Core GPUs (MedViLA), were provided by the NVIDIA Academic Hardware Grant Program.
+\subsubsection{\discintname}
+The authors have no competing interests to declare that are relevant to
+the content of this article.
+\end{credits}
+
+%
+% ---- Bibliography ----
+% BibTeX users: specify bibliography style 'splncs04' (Springer's LNCS
+% style). Entries live in mybibliography.bib next to this file.
+%
+\clearpage
+\bibliographystyle{splncs04}
+\bibliography{mybibliography}
+
+\end{document}
