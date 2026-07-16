@@ -25,7 +25,8 @@ from ..models.model import build_model_from_config
 from ..data.dataset import RobustBiometryDataset
 from ..data.multicrop import MultiCropBiometryDataset
 from ..data.transforms import get_unlabeled_transforms, get_multicrop_transforms
-from .common import create_logger, get_writer, get_device, set_seed, runs_dir, resolve_amp
+from .common import (create_logger, get_writer, get_device, set_seed, runs_dir, resolve_amp,
+                     save_checkpoint_atomic)
 
 
 def _ckpt_dir(cfg):
@@ -67,7 +68,18 @@ def _train_sameview(cfg, logger):
     amp_on, amp_dtype, use_scaler = resolve_amp(cfg.optim.amp_dtype)
     scaler = GradScaler(enabled=use_scaler)
 
-    for epoch in range(cfg.phase1.epochs):
+    start_epoch = 0
+    if cfg.resume and os.path.isfile(cfg.resume):
+        ck = torch.load(cfg.resume, map_location=device)
+        student.load_state_dict(ck["student_state_dict"])
+        teacher.load_state_dict(ck["teacher_state_dict"])
+        opt.load_state_dict(ck["optimizer_state_dict"])
+        sched.load_state_dict(ck["scheduler_state_dict"])
+        scaler.load_state_dict(ck["scaler_state_dict"])
+        start_epoch = ck["epoch"]
+        logger.info(f"Resumed Phase 1 (sameview) from {cfg.resume} @ epoch {start_epoch}")
+
+    for epoch in range(start_epoch, cfg.phase1.epochs):
         student.train(); teacher.eval()
         losses = []
         pbar = tqdm(loader, desc=f"[sameview] Epoch {epoch+1}/{cfg.phase1.epochs}",
@@ -99,6 +111,15 @@ def _train_sameview(cfg, logger):
             path = os.path.join(ckpt_dir, f"dinov2_adapted_ep{epoch+1}.pth")
             torch.save(student.encoder.state_dict(), path)
             logger.info(f"--> saved adapted encoder -> {path}")
+        # full resumable state every epoch (overwritten); resume with -o resume=<this>
+        save_checkpoint_atomic({
+            "epoch": epoch + 1,
+            "student_state_dict": student.state_dict(),
+            "teacher_state_dict": teacher.state_dict(),
+            "optimizer_state_dict": opt.state_dict(),
+            "scheduler_state_dict": sched.state_dict(),
+            "scaler_state_dict": scaler.state_dict(),
+        }, os.path.join(ckpt_dir, "latest_checkpoint.pth"))
     writer.close()
     logger.info("Phase 1 (sameview) finished.")
 
@@ -138,6 +159,8 @@ class DINOLoss(nn.Module):
 
     @torch.no_grad()
     def _update_center(self, teacher_output):
+        # teacher_output is (2*B, D) [global crops concatenated], so the mean over dim 0 is
+        # a single global (1,D) center -- the standard DINO EMA centering.
         batch_center = torch.sum(teacher_output, dim=0, keepdim=True) / len(teacher_output)
         self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
 
@@ -192,8 +215,22 @@ def _train_multicrop(cfg, logger):
     scaler = GradScaler(enabled=use_scaler)
     dino_loss = DINOLoss(out_dim=cfg.phase1.out_dim, ncrops=ncrops, nepochs=cfg.phase1.epochs).to(device)
 
-    step = 0
-    for epoch in range(cfg.phase1.epochs):
+    start_epoch, step = 0, 0
+    if cfg.resume and os.path.isfile(cfg.resume):
+        ck = torch.load(cfg.resume, map_location=device)
+        student.load_state_dict(ck["student_state_dict"])
+        teacher.load_state_dict(ck["teacher_state_dict"])
+        opt.load_state_dict(ck["optimizer_state_dict"])
+        sched.load_state_dict(ck["scheduler_state_dict"])
+        scaler.load_state_dict(ck["scaler_state_dict"])
+        c = ck["dino_center"].to(device)
+        if c.dim() == 3:               # legacy (1,B,D) per-position center -> collapse to global (1,D)
+            c = c.mean(dim=1)
+        dino_loss.center = c
+        start_epoch, step = ck["epoch"], ck["step"]
+        logger.info(f"Resumed Phase 1 (multicrop) from {cfg.resume} @ epoch {start_epoch}, step {step}")
+
+    for epoch in range(start_epoch, cfg.phase1.epochs):
         student.train()
         losses = []
         pbar = tqdm(loader, desc=f"[multicrop] Epoch {epoch+1}/{cfg.phase1.epochs}",
@@ -203,8 +240,10 @@ def _train_multicrop(cfg, logger):
             opt.zero_grad()
             with torch.autocast("cuda", dtype=amp_dtype, enabled=amp_on):
                 with torch.no_grad():
-                    t_out = torch.stack([teacher(g) for g in crops[:2]])
-                s_out = torch.stack([student(c) for c in crops])
+                    # concat (not stack) -> (2*B, D): textbook DINO. The two global crops
+                    # share ONE global center (1,D); DINOLoss.chunk() splits them back apart.
+                    t_out = torch.cat([teacher(g) for g in crops[:2]], dim=0)
+                s_out = torch.cat([student(c) for c in crops], dim=0)   # (ncrops*B, D)
                 loss = dino_loss(s_out, t_out, epoch)
             scaler.scale(loss).backward()
             scaler.step(opt); scaler.update(); sched.step()
@@ -223,5 +262,15 @@ def _train_multicrop(cfg, logger):
             path = os.path.join(ckpt_dir, f"dinov2_adapted_ep{epoch+1}.pth")
             torch.save(student.encoder.state_dict(), path)
             logger.info(f"--> saved adapted encoder -> {path}")
+        # full resumable state every epoch (overwritten); resume with -o resume=<this>
+        save_checkpoint_atomic({
+            "epoch": epoch + 1, "step": step,
+            "student_state_dict": student.state_dict(),
+            "teacher_state_dict": teacher.state_dict(),
+            "optimizer_state_dict": opt.state_dict(),
+            "scheduler_state_dict": sched.state_dict(),
+            "scaler_state_dict": scaler.state_dict(),
+            "dino_center": dino_loss.center,
+        }, os.path.join(ckpt_dir, "latest_checkpoint.pth"))
     writer.close()
     logger.info("Phase 1 (multicrop) finished.")

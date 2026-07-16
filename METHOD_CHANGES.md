@@ -129,6 +129,21 @@ checkpoint is the exact legacy reference. All other configs (and bare `RunConfig
 now default to the recommended recipe, including the multi-level neck and the register
 backbone.
 
+### A8 — DINO teacher centering corrected to a single global vector
+The ported multi-crop `DINOLoss` stacked the two global-crop teacher outputs
+(`torch.stack` → `(2, B, D)`) instead of concatenating them, so `center` drifted to a
+per-batch-position `(1, B, D)` buffer instead of the textbook single `(1, D)` running
+mean. Because the loader shuffles every epoch, each of the B positions still converged
+to ~the same value, so the anti-collapse mechanism worked, just from a noisier
+per-position estimate. Now the crops are `torch.cat`-ed (`(2B, D)` / `(ncrops·B, D)`),
+so `center` is a proper global `(1, D)` EMA vector — no other loss math changed
+(`gubiometry/engine/phase1.py`, `DINOLoss`/`_train_multicrop`).
+- *Paper impact:* affects any **future** Phase-1 SSL run (slightly less noisy
+  centering); does not retroactively change a run already in progress or completed
+  under the old code — no need to re-run Phase 1 for this alone.
+- *Shape-breaking:* no. A resume checkpoint saved under the old code (`center`
+  shaped `(1, B, D)`) is auto-collapsed (`mean(dim=1)`) on load.
+
 ---
 
 ## 2. Pipeline / engineering changes (no paper impact)
@@ -156,6 +171,18 @@ backbone.
   dict (no manual key-stripping needed for Phase 2).
 - Small fixes from `FIXES.md` are carried in (correct split JSON output, robust
   Phase-1 weight loading, repo-root run dirs, DSNT/DINO warmup crash guard).
+- **In-code logging.** Both phases log to stdout *and* `runs/<run>/<phase>_<timestamp>.log`
+  via `create_logger` (no shell redirect needed — safe to run bare in a tmux pane), with a
+  stable `<phase>_latest.log` symlink for `tail -f` and an installed excepthook so an
+  uncaught crash on an unattended run is captured in the file, not just lost.
+- **Resume for both phases.** Every epoch, Phase 1 and Phase 2 write a full
+  `runs/<run>/checkpoints/latest_checkpoint.pth` (model + EMA teacher + optimizer +
+  scheduler + AMP scaler state, plus Phase 1's DINO center and step count / Phase 2's
+  best-metric and early-stop counter) via `save_checkpoint_atomic` (write-to-temp +
+  `os.replace`, so a crash mid-write can't corrupt an existing checkpoint). Re-run the
+  **same** command with `-o resume=runs/<run>/checkpoints/latest_checkpoint.pth` to
+  continue from the next epoch; keep `epochs`/`batch_size` unchanged on resume since the
+  LR/teacher-temp schedules are indexed by epoch count.
 
 ---
 

@@ -125,6 +125,18 @@ checkpoint (e.g. `ep30`) to gauge the trend before the full run finishes. Then s
 `PHASE1=…/dinov2_adapted_ep<N>.pth` in Step 2. If you want to know whether SSL is worth
 the cost, also run the folds with `PHASE1=""` (no SSL) and compare the CV.
 
+**If it stops (crash, preemption, `Ctrl-C`):** a full resumable state is written every
+epoch to `runs/phase1_multicrop/checkpoints/latest_checkpoint.pth`. Re-run the *same*
+command with `-o resume=...`:
+```bash
+CUDA_VISIBLE_DEVICES=<free> python -m gubiometry phase1 --config configs/phase1_multicrop.yaml \
+  -o resume=runs/phase1_multicrop/checkpoints/latest_checkpoint.pth
+```
+It restores model/EMA-teacher/optimizer/scheduler/AMP-scaler/DINO-center and continues
+from the next epoch. Don't change `phase1.epochs`/`batch_size` on resume — the teacher-temp
+and cosine schedules are indexed by epoch count. Phase 2 folds resume the same way
+(`-o resume=runs/<fold_run>/checkpoints/latest_checkpoint.pth`).
+
 ---
 
 ## PROMISING ALTERNATIVE PATHS (ablations)
@@ -159,7 +171,7 @@ CUDA_VISIBLE_DEVICES=<free> python -m gubiometry phase2 --config configs/phase2_
 4. Optionally, **ablations** (measurement / Wing / strong-aug / median / bigger backbone) as single-holdout runs on spare GPUs → fold the winners into a final ensemble.
 
 ## Housekeeping / gotchas
-- Checkpoints are large (~1.2 GB `best`, ~2.9 GB `latest` per run × 5 folds). Watch disk; delete `latest_checkpoint.pth` once a run is done if you don't need to resume.
+- Checkpoints are large (~1.2 GB `best`, ~2.9 GB `latest` per run × 5 folds). Watch disk; delete `latest_checkpoint.pth` once a run is done (resume needs it, the final model doesn't — see "If it stops" above).
 - `phase2_upgraded.yaml` already pairs bs64 with lr2e-4 (sqrt-scaled) — no manual LR bump needed. AMP is **bf16** on the A100 (no gradient scaler); a leftover `GradScaler` import may still print one harmless deprecation line.
 - `sample_temp=0.5` (default) means the tiny tasks are seen less often than fully-balanced — intended (less overfit), but glance at their per-task val MRE to be sure it's not regressing.
 - Always set `CUDA_VISIBLE_DEVICES` to a **free** GPU — this box is shared.

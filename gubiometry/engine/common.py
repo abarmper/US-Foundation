@@ -145,3 +145,11 @@ def load_phase1_encoder_weights(encoder, ckpt_path, device, logger=None):
 def save_json(obj, path):
     with open(path, "w") as f:
         json.dump(obj, f, indent=2)
+
+
+def save_checkpoint_atomic(obj, path):
+    """torch.save to a temp file then atomically rename -- a crash mid-write cannot
+    corrupt an existing checkpoint (matters for the multi-day Phase-1 run)."""
+    tmp = path + ".tmp"
+    torch.save(obj, tmp)
+    os.replace(tmp, path)
