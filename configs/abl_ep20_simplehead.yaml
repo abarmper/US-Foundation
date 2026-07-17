@@ -1,0 +1,57 @@
+# ABLATION 4 (new method) -- upgraded recipe but the HRNet neck is replaced by a
+# lightweight ViTPose-style deconvolution decoder: model.neck.decoder = simple.
+#
+# Rationale (literature + task): the strongest result in the ViT-pose literature is
+# that a strong backbone + a MINIMAL decoder matches a heavy multi-scale one (ViTPose),
+# and for small/imbalanced datasets fewer decoder params overfit less -- exactly the
+# regime of the tiny cardiac tasks (IVC/PSAX/A4C) that dominate the macro metric.
+# "simple" deconvolves the single DINOv2 last-layer 37x37 grid up to 148 (two x2
+# ConvTranspose blocks), dropping HRNet's parallel branches + cross-resolution fusion.
+# The soft-argmax heads, loss, metric and TTA are all UNCHANGED -- only the neck differs.
+#
+# input_mode=single -> the simple decoder consumes only the last-layer grid (this file).
+# For the concat-based multi-level variant, see abl_ep20_simplehead_ml.yaml.
+# Lighter than multilevel HRNet, so bs64 fits. Compare against abl_ep20_upgraded
+# (anchor) and abl_ep20_singleneck on fold-0 val.
+run_name: abl_ep20_simplehead
+phase: phase2
+seed: 42
+phase1_weights: runs/phase1_multicrop/checkpoints/dinov2_adapted_ep20.pth
+
+model:
+  backbone:
+    name: dinov2_vitl14_reg
+    unfreeze_last_n_blocks: 4
+  neck:
+    branch_width: [128, 96, 64]   # ignored by the simple decoder; kept for config symmetry
+    dropout_p: 0.3
+    input_mode: single            # ignored under decoder=simple (last-layer grid)
+    feature_layers: [5, 11, 17, 23]
+    shared_head: false
+    decoder: simple               # NEW METHOD: ViTPose-style deconv decoder (vs "hrnet")
+  heatmap_size: 148
+
+data:
+  data_root: data/data/train_data
+  kfold_dir: splits/kfold_v1
+  fold: 0
+  batch_size: 64
+  num_workers: 8
+  canvas: 518
+  sample_temp: 0.5
+
+optim:
+  lr: 2.0e-4
+  encoder_lr_mult: 0.1
+  llrd_decay: 0.75
+  amp_dtype: bf16
+  weight_decay: 1.0e-2
+  epochs: 150
+  warmup_epochs: 15
+  softargmax_temp: 10.0
+  loss_space: original
+  dsnt_lambda: 0.1
+  dsnt_type: js
+  dsnt_sigma: 1.0
+  early_stop_patience: 40
+  select_metric: challenge_blend

@@ -35,6 +35,9 @@ class NeckConfig:
     input_mode: str = "multilevel"       # multi-level DINOv2 features into the neck; "single" = legacy
     feature_layers: tuple = (5, 11, 17, 23)
     shared_head: bool = False
+    decoder: str = "hrnet"               # post-backbone decoder: "hrnet" (multi-branch fusion) | "simple"
+                                         # ("simple" = ViTPose-style deconv upsampler; uses the last-layer
+                                         #  grid, so input_mode/feature_layers are ignored under it)
 
 
 @dataclass

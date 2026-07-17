@@ -87,6 +87,7 @@ These need **no code change** — set them directly.
 | `model.backbone.name` | `dinov2_vitl14` | `dinov2_vits14`, `dinov2_vitb14`, `dinov2_vitg14` (+`_reg`) | Any DINOv2 size; embed dim auto-detected (Phase 1 & 2). A different size/variant **requires re-running Phase 1**. |
 | `model.heatmap_size` | `128` | `96`, `160` | Higher → finer soft-argmax sub-pixel precision (more memory). |
 | `model.neck.feature_layers` | `[5,11,17,23]` | e.g. `[2,5,8,11]` (shallower), `[11,17,20,23]` (deeper) | Which DINOv2 depths feed the neck (only when `input_mode=multilevel`). |
+| `model.neck.decoder` | `hrnet` | `simple` | Post-backbone decoder (orthogonal to `input_mode`). `simple` = ViTPose-style deconv upsampler (2× ConvTranspose → 148), replacing HRNet's multi-branch fusion; keeps the soft-argmax heads/loss unchanged. With `input_mode=single` it uses the last-layer grid (`configs/abl_ep20_simplehead.yaml`, ~5.3M neck); with `input_mode=multilevel` it **concatenates** the `feature_layers` depths channel-wise (`configs/abl_ep20_simplehead_ml.yaml`, ~18M neck — the concat analogue of hrnet-multilevel's sum). Motivated by ViTPose (strong backbone → minimal decoder). |
 | `model.backbone.unfreeze_last_n_blocks` | `4` | `0`, `6`, `8` | How much of the encoder to fine-tune. Pairs with `optim.llrd_decay`. |
 | `optim.encoder_lr_mult` | `0.1` | `0.05`, `0.2` | Encoder LR = `lr × mult` (top of encoder). |
 | `optim.softargmax_temp` | `10.0` | `5.0`, `20.0` | Higher = sharper argmax. |

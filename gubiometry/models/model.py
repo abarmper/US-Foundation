@@ -11,18 +11,20 @@ import torch.nn as nn
 
 from ..constants import TASK_KEYPOINTS
 from .backbone import load_backbone, get_multilevel_features
-from .neck import TrueHRNetNeck
+from .neck import TrueHRNetNeck, SimpleDecoder
 from .heads import TaskSpecificHead, make_spatial_reasoning_trunk
 
 
 class UnifiedBiometryModel(nn.Module):
     def __init__(self, backbone_name="dinov2_vitl14", freeze_encoder=True, heatmap_size=128,
                  dropout_p=0.3, unfreeze_last_n_blocks=0, neck_branch_width=(128, 96, 64),
-                 shared_head=False, input_mode="single", feature_layers=(5, 11, 17, 23)):
+                 shared_head=False, input_mode="single", feature_layers=(5, 11, 17, 23),
+                 neck_decoder="hrnet"):
         super().__init__()
         self.unfreeze_last_n_blocks = unfreeze_last_n_blocks
         self.shared_head = shared_head
-        self.input_mode = input_mode
+        self.neck_decoder = neck_decoder
+        self.input_mode = input_mode                   # honored by both decoders (single | multilevel)
         self.feature_layers = tuple(feature_layers)
 
         self.encoder, self.embed_dim = load_backbone(backbone_name)
@@ -37,10 +39,17 @@ class UnifiedBiometryModel(nn.Module):
                 for param in self.encoder.norm.parameters():
                     param.requires_grad = True
 
-        self.shared_upsampler = TrueHRNetNeck(
-            in_channels=self.embed_dim, out_channels=128,
-            branch_width=neck_branch_width, dropout_p=dropout_p, input_mode=input_mode,
-        )
+        if neck_decoder == "simple":
+            # multilevel -> concat L depths on channels; single -> last-layer grid only
+            n_levels = len(self.feature_layers) if input_mode == "multilevel" else 1
+            self.shared_upsampler = SimpleDecoder(in_channels=self.embed_dim * n_levels, out_channels=128)
+        elif neck_decoder == "hrnet":
+            self.shared_upsampler = TrueHRNetNeck(
+                in_channels=self.embed_dim, out_channels=128,
+                branch_width=neck_branch_width, dropout_p=dropout_p, input_mode=self.input_mode,
+            )
+        else:
+            raise ValueError(f"Unknown neck decoder: {neck_decoder!r} (hrnet|simple)")
 
         if shared_head:
             self.shared_trunk = make_spatial_reasoning_trunk(
@@ -111,4 +120,5 @@ def build_model_from_config(cfg, freeze_encoder=True):
         shared_head=model_cfg.neck.shared_head,
         input_mode=model_cfg.neck.input_mode,
         feature_layers=tuple(model_cfg.neck.feature_layers),
+        neck_decoder=getattr(model_cfg.neck, "decoder", "hrnet"),
     )

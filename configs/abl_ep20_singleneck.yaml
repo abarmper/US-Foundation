@@ -1,0 +1,48 @@
+# ABLATION 2 -- upgraded recipe with ONE change: neck input_mode multilevel -> single.
+# Tests whether the DPT-style multi-level feature reassemble helps or hurts vs. the
+# original single last-layer neck. (heatmap_size stays 148 -- single mode also outputs
+# a 148x148 fused map, so this isolates ONLY the neck input path, not the head
+# resolution.) Multi-depth reassemble is well-validated for dense per-pixel prediction
+# but NOT established for sparse landmark detection, so it is a genuine unknown.
+# Expectation if it holds back the run: single-neck matches or beats the anchor.
+run_name: abl_ep20_singleneck
+phase: phase2
+seed: 42
+phase1_weights: runs/phase1_multicrop/checkpoints/dinov2_adapted_ep20.pth
+
+model:
+  backbone:
+    name: dinov2_vitl14_reg
+    unfreeze_last_n_blocks: 4
+  neck:
+    branch_width: [128, 96, 64]
+    dropout_p: 0.3
+    input_mode: single         # ABLATION: reverted from multilevel (upgraded) -> single last-layer (baseline)
+    feature_layers: [5, 11, 17, 23]   # ignored in single mode; kept for config symmetry
+    shared_head: false
+  heatmap_size: 148            # kept at 148 on purpose so ONLY the neck path differs from the anchor
+
+data:
+  data_root: data/data/train_data
+  kfold_dir: splits/kfold_v1
+  fold: 0
+  batch_size: 64
+  num_workers: 8
+  canvas: 518
+  sample_temp: 0.5
+
+optim:
+  lr: 2.0e-4
+  encoder_lr_mult: 0.1
+  llrd_decay: 0.75
+  amp_dtype: bf16
+  weight_decay: 1.0e-2
+  epochs: 150
+  warmup_epochs: 15
+  softargmax_temp: 10.0
+  loss_space: original
+  dsnt_lambda: 0.1
+  dsnt_type: js
+  dsnt_sigma: 1.0
+  early_stop_patience: 40
+  select_metric: challenge_blend

@@ -1,0 +1,49 @@
+# NO-SSL baseline on fold 0 -- legacy recipe, register backbone, NO Phase-1 init.
+# phase1_weights is empty -> the encoder is the off-the-shelf pretrained DINOv2-reg
+# (torch.hub), NOT the Phase-1 domain-adapted one. This is the fold-0, register-backbone
+# analogue of the old runs/p2_baseline_nossl (which was on the HOLDOUT split + the
+# NON-register backbone, so it was not comparable to the fold-0 SSL runs).
+#
+# It differs from phase2_baseline_fold0_ssl20 ONLY in the SSL init, so
+#   abl_nossl  vs  baseline_ssl20  == a clean "does Phase-1 SSL help the baseline recipe?"
+# All other knobs match the fold-0 family (single neck, heatmap128, llrd1.0, sample_temp0,
+# canvas loss, dsnt0, fp16, bs64/lr2e-4/150ep/patience40).
+run_name: abl_nossl_fold0
+phase: phase2
+seed: 42
+phase1_weights: ""              # NO SSL: off-the-shelf DINOv2-reg, no Phase-1 adaptation
+
+model:
+  backbone:
+    name: dinov2_vitl14_reg     # register backbone (matches the SSL fold-0 runs, so only SSL differs)
+    unfreeze_last_n_blocks: 4
+  neck:
+    branch_width: [128, 96, 64]
+    dropout_p: 0.3
+    input_mode: single
+    shared_head: false
+    decoder: hrnet
+  heatmap_size: 128
+
+data:
+  data_root: data/data/train_data
+  kfold_dir: splits/kfold_v1
+  fold: 0
+  batch_size: 64
+  num_workers: 8
+  canvas: 518
+  sample_temp: 0.0
+
+optim:
+  lr: 2.0e-4
+  encoder_lr_mult: 0.1
+  llrd_decay: 1.0
+  amp_dtype: fp16
+  weight_decay: 1.0e-2
+  epochs: 150
+  warmup_epochs: 15
+  softargmax_temp: 10.0
+  loss_space: canvas
+  dsnt_lambda: 0.0
+  early_stop_patience: 40
+  select_metric: challenge_blend

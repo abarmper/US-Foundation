@@ -1,0 +1,53 @@
+# Phase 2 -- legacy recipe (single-mode neck, heatmap 128, llrd 1.0, sample_temp 0,
+# loss_space canvas, dsnt 0, fp16 -- same knobs as phase2_baseline.yaml), but SSL-
+# initialized from a Phase-1 checkpoint and run on a k-fold split instead of the
+# holdout. Exists to isolate the A7 recipe changes (see METHOD_CHANGES.md) from
+# phase2_upgraded.yaml on an apples-to-apples footing: same fold, same Phase-1
+# encoder, same batch/LR/epoch budget -- only the recipe knobs differ.
+#
+# phase2_baseline.yaml itself is NOT changed to this -- it stays the exact legacy
+# reference (non-register backbone, no SSL) that reproduces the original graph and
+# the already-trained p2_baseline_nossl checkpoint.
+#
+# Usage (pick the fold, point at whichever Phase-1 checkpoint you want to test):
+#   python -m gubiometry phase2 --config configs/phase2_baseline_ssl.yaml \
+#     -o data.fold=0 -o run_name=phase2_baseline_fold0_ssl10 \
+#     -o phase1_weights=runs/phase1_multicrop/checkpoints/dinov2_adapted_ep10.pth
+run_name: phase2_baseline_ssl
+phase: phase2
+seed: 42
+phase1_weights: runs/phase1_multicrop/checkpoints/dinov2_adapted_ep10.pth
+
+model:
+  backbone:
+    name: dinov2_vitl14_reg    # must match the Phase-1 checkpoint's backbone (register variant)
+    unfreeze_last_n_blocks: 4
+  neck:
+    branch_width: [128, 96, 64]
+    dropout_p: 0.3
+    input_mode: single          # legacy: no multi-level reassemble
+    shared_head: false
+  heatmap_size: 128             # legacy: smaller than the neck's native 148
+
+data:
+  data_root: data/data/train_data
+  kfold_dir: splits/kfold_v1
+  # fold: 0                     # set via -o data.fold=<f> per run
+  batch_size: 64                # matches phase2_upgraded's compute budget
+  num_workers: 8
+  canvas: 518
+  sample_temp: 0.0              # legacy: fully balanced
+
+optim:
+  lr: 2.0e-4                    # sqrt-scaled from 1e-4 @ bs16, matches phase2_upgraded
+  encoder_lr_mult: 0.1
+  llrd_decay: 1.0                # legacy: no layer-wise decay
+  weight_decay: 1.0e-2
+  epochs: 150                    # matches phase2_upgraded's schedule length
+  warmup_epochs: 15
+  softargmax_temp: 10.0
+  dsnt_lambda: 0.0               # legacy: no DSNT regularization
+  loss_space: canvas             # legacy: 518-canvas px
+  amp_dtype: fp16                # legacy
+  early_stop_patience: 40        # matches phase2_upgraded
+  select_metric: challenge_blend

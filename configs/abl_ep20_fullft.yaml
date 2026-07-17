@@ -1,0 +1,62 @@
+# ABLATION 3 -- upgraded recipe (KEEPS multilevel neck) but fine-tunes the WHOLE
+# backbone: unfreeze_last_n_blocks 4 -> 24 (all DINOv2-L transformer blocks + final
+# norm; patch-embed / pos / register tokens stay frozen).
+#
+# Motivation: in multilevel mode the neck reads features from depths 5/11/17/23, but
+# with unfreeze=4 only depth 23 gets gradients -- the other three feature-producing
+# layers are frozen. This tests whether letting those (and all) layers adapt to
+# ultrasound in Phase 2 helps the multilevel neck.
+#
+# NOT a clean single-variable ablation vs. the anchor: full fine-tuning cannot fit at
+# bs64 (all 24 blocks must retain activations for backprop ~120GB+), so batch_size is
+# dropped to 16 and lr sqrt-scaled to 1e-4 accordingly. So this run differs from the
+# anchor in THREE knobs (unfreeze, batch_size, lr) -- read it as "does aggressive
+# fine-tuning help", not as an isolated unfreeze-depth measurement.
+#
+# Interaction to know: with llrd_decay=0.75 kept, the SHALLOWEST unfrozen blocks get a
+# vanishingly small LR (0.75^23 of the encoder LR) by design -- the safe, standard way
+# to full-fine-tune a ViT (deep layers move, shallow layers barely). If you want a more
+# uniform/aggressive deep fine-tune, raise llrd_decay toward 1.0 or encoder_lr_mult.
+# Risk: full fine-tune on limited, imbalanced labels can overfit/forget -- that is
+# exactly what this ablation is meant to measure.
+run_name: abl_ep20_fullft
+phase: phase2
+seed: 42
+phase1_weights: runs/phase1_multicrop/checkpoints/dinov2_adapted_ep20.pth
+
+model:
+  backbone:
+    name: dinov2_vitl14_reg
+    unfreeze_last_n_blocks: 24   # ABLATION: 4 -> 24 (all blocks) = full backbone fine-tune
+  neck:
+    branch_width: [128, 96, 64]
+    dropout_p: 0.3
+    input_mode: multilevel       # KEPT (multilevel), per the request
+    feature_layers: [5, 11, 17, 23]
+    shared_head: false
+  heatmap_size: 148
+
+data:
+  data_root: data/data/train_data
+  kfold_dir: splits/kfold_v1
+  fold: 0
+  batch_size: 16               # forced down from 64 so full fine-tune fits in 80GB
+  num_workers: 8
+  canvas: 518
+  sample_temp: 0.5
+
+optim:
+  lr: 1.0e-4                   # sqrt-scaled from 2e-4@bs64 -> 1e-4@bs16 (matches the bs16 convention)
+  encoder_lr_mult: 0.1
+  llrd_decay: 0.75             # kept: deep layers move most, shallow barely (safe full-FT)
+  amp_dtype: bf16
+  weight_decay: 1.0e-2
+  epochs: 150
+  warmup_epochs: 15
+  softargmax_temp: 10.0
+  loss_space: original
+  dsnt_lambda: 0.1
+  dsnt_type: js
+  dsnt_sigma: 1.0
+  early_stop_patience: 40
+  select_metric: challenge_blend

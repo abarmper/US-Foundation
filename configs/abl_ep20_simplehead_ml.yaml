@@ -1,0 +1,56 @@
+# ABLATION 5 -- simple (ViTPose-style) decoder WITH multi-level feature CONCATENATION.
+#   model.neck.decoder = simple  +  input_mode = multilevel
+#
+# All DINOv2 depths in feature_layers share the 37x37 resolution, so the L grids are
+# concatenated along channels (embed_dim*L = 1024*4 = 4096) and fed to the same two
+# deconv blocks (37->74->148). This is the CONCATENATION-based multi-level fusion
+# analogue of hrnet-multilevel's SUM-based DPT reassemble -- it tests whether combining
+# multiple ViT depths helps once fused by a simple decoder, and whether concat > sum.
+#
+# Note: concatenating 4 raw 1024-d depths makes the first deconv large (~17M params) ->
+# this variant is HEAVIER than the single-level simple head and than HRNet, so it is NOT
+# a "lightweight" test -- it isolates the concat-multi-level idea. Still fits bs64.
+# Compare against: abl_ep20_simplehead (single-level simple), abl_ep20_upgraded (hrnet
+# multilevel = the SUM analogue), and abl_ep20_singleneck.
+run_name: abl_ep20_simplehead_ml
+phase: phase2
+seed: 42
+phase1_weights: runs/phase1_multicrop/checkpoints/dinov2_adapted_ep20.pth
+
+model:
+  backbone:
+    name: dinov2_vitl14_reg
+    unfreeze_last_n_blocks: 4
+  neck:
+    branch_width: [128, 96, 64]   # ignored by the simple decoder
+    dropout_p: 0.3
+    input_mode: multilevel        # concat the feature_layers depths (channel-wise)
+    feature_layers: [5, 11, 17, 23]
+    shared_head: false
+    decoder: simple               # ViTPose-style deconv on the concatenated depths
+  heatmap_size: 148
+
+data:
+  data_root: data/data/train_data
+  kfold_dir: splits/kfold_v1
+  fold: 0
+  batch_size: 64
+  num_workers: 8
+  canvas: 518
+  sample_temp: 0.5
+
+optim:
+  lr: 2.0e-4
+  encoder_lr_mult: 0.1
+  llrd_decay: 0.75
+  amp_dtype: bf16
+  weight_decay: 1.0e-2
+  epochs: 150
+  warmup_epochs: 15
+  softargmax_temp: 10.0
+  loss_space: original
+  dsnt_lambda: 0.1
+  dsnt_type: js
+  dsnt_sigma: 1.0
+  early_stop_patience: 40
+  select_metric: challenge_blend

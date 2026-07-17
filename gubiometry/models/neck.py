@@ -12,6 +12,7 @@ Two input modes:
                     `reassemble.*` is built instead -> disjoint checkpoint keys.
 """
 
+import torch
 import torch.nn as nn
 
 from .heads import group_norm, conv_bn_relu
@@ -108,6 +109,52 @@ class MultiLevelReassemble(nn.Module):
         super().__init__()
         self.proj_b3 = _DeconvX2(in_channels, w3)
         self.proj_b3_aux = _DeconvX2(in_channels, w3)
+
+
+class SimpleDecoder(nn.Module):
+    """ViTPose-style lightweight decoder -- an alternative to TrueHRNetNeck.
+
+    Motivation (see METHOD_CHANGES.md / EXPERIMENTS.md): the strongest finding in the
+    ViT-pose literature is that with a strong backbone a *minimal* decoder matches a
+    heavy multi-scale one (ViTPose), and for tiny/imbalanced datasets fewer decoder
+    params overfit less -- which is exactly the regime the small cardiac tasks live in.
+    So this deconvolves a DINOv2 patch grid up to out_channels @148 with two stride-2
+    ConvTranspose blocks (37->74->148), replacing HRNet's parallel branches +
+    cross-resolution exchange. The soft-argmax heads downstream are unchanged, so
+    loss/metric/TTA are byte-identical to hrnet mode -- only the neck differs.
+
+    Input depends on `input_mode` (the caller sizes `in_channels` accordingly):
+      * single     -- forward() gets the last-layer grid (B, embed_dim, 37, 37).
+      * multilevel -- forward() gets a tuple of L grids at the same 37x37 (all DINOv2
+                      depths share resolution), CONCATENATED along channels here to
+                      (B, embed_dim*L, 37, 37). This is the concat-based multi-level
+                      fusion analogue of hrnet's sum-based reassemble.
+
+    GroupNorm throughout (identical train/eval stats across the heterogeneous tasks,
+    matching the rest of the neck/heads). Output shape matches TrueHRNetNeck's:
+    (B, out_channels, 148, 148), so it is a drop-in for `shared_upsampler`.
+    """
+    def __init__(self, in_channels=1024, out_channels=128, deconv_channels=256, n_deconv=2):
+        super().__init__()
+        layers = []
+        ch = in_channels
+        for _ in range(n_deconv):                      # 37 -> 74 -> 148 (two x2 upsamples)
+            layers += [
+                nn.ConvTranspose2d(ch, deconv_channels, kernel_size=4, stride=2, padding=1, bias=False),
+                group_norm(deconv_channels),
+                nn.ReLU(inplace=True),
+            ]
+            ch = deconv_channels
+        layers += [                                    # project to the neck's output width
+            nn.Conv2d(ch, out_channels, kernel_size=1, bias=False),
+            group_norm(out_channels),
+        ]
+        self.net = nn.Sequential(*layers)
+
+    def forward(self, feats):
+        if isinstance(feats, (tuple, list)):           # multilevel: concat depths on channels
+            feats = torch.cat(feats, dim=1)            # (B, embed_dim*L, 37, 37)
+        return self.net(feats)                         # -> (B, out_channels, 148, 148)
 
 
 class TrueHRNetNeck(nn.Module):

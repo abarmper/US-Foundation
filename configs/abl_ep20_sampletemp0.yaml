@@ -1,0 +1,47 @@
+# ABLATION 1 -- upgraded recipe with ONE change: sample_temp 0.5 -> 0.0 (balanced).
+# Tests the #1 hypothesis for the upgraded run's regression: that sqrt task-sampling
+# (0.5) under-trains the tiny cardiac tasks (IVC/PSAX/A4C), which dominate the
+# macro-averaged metric. Balanced sampling (0.0) is the metric-aligned choice.
+# Expectation if the hypothesis holds: PSAX/A4C/IVC per-task MRE recovers vs. the
+# abl_ep20_upgraded anchor. Everything else identical to the anchor.
+run_name: abl_ep20_sampletemp0
+phase: phase2
+seed: 42
+phase1_weights: runs/phase1_multicrop/checkpoints/dinov2_adapted_ep20.pth
+
+model:
+  backbone:
+    name: dinov2_vitl14_reg
+    unfreeze_last_n_blocks: 4
+  neck:
+    branch_width: [128, 96, 64]
+    dropout_p: 0.3
+    input_mode: multilevel
+    feature_layers: [5, 11, 17, 23]
+    shared_head: false
+  heatmap_size: 148
+
+data:
+  data_root: data/data/train_data
+  kfold_dir: splits/kfold_v1
+  fold: 0
+  batch_size: 64
+  num_workers: 8
+  canvas: 518
+  sample_temp: 0.0            # ABLATION: reverted from 0.5 (upgraded) -> fully balanced (baseline)
+
+optim:
+  lr: 2.0e-4
+  encoder_lr_mult: 0.1
+  llrd_decay: 0.75
+  amp_dtype: bf16
+  weight_decay: 1.0e-2
+  epochs: 150
+  warmup_epochs: 15
+  softargmax_temp: 10.0
+  loss_space: original
+  dsnt_lambda: 0.1
+  dsnt_type: js
+  dsnt_sigma: 1.0
+  early_stop_patience: 40
+  select_metric: challenge_blend
