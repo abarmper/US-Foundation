@@ -31,6 +31,14 @@ phase1:
   n_local_crops: 6
   # heads / objective ride on the DINOv2-L dataclass defaults (dino_out_dim 65536,
   # ibot separate head, koleo 0.1, teacher temp 0.04->0.07, momentum 0.994->1.0, clip 3.0)
+  # --- high-resolution adaptation tail (DINOv2 §5): after the 224 bulk, adapt at 518 so
+  #     the encoder features match the Phase-2 (518) downstream resolution ---
+  highres_epochs: 4
+  highres_crop_size: 518
+  highres_batch_size: 8         # 518 is ~5x heavier per image; smaller batch
+  highres_grad_accum_steps: 32  # keep effective batch ~256
+  highres_lr: 5.0e-5            # compressed warmup+cosine restart for the tail
+  highres_warmup_epochs: 1
   # --- crops ---
   global_crop_size: 224
   local_crop_size: 98

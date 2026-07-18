@@ -133,6 +133,13 @@ class Phase1Config:
     weight_decay_end: float = 0.0       # 0 -> constant wd (= weight_decay); official uses 0.2
     clip_grad: float = 3.0
     freeze_last_layer_epochs: int = 1
+    # high-resolution adaptation tail (DINOv2 §5: short high-res phase after the bulk)
+    highres_epochs: int = 0             # 0 -> no tail; >0 -> that many extra epochs at highres_crop_size
+    highres_crop_size: int = 518
+    highres_batch_size: int = 0         # 0 -> batch_size (usually smaller: 518 is heavy)
+    highres_grad_accum_steps: int = 0   # 0 -> grad_accum_steps (usually larger to keep the effective batch)
+    highres_lr: float = 0.0             # 0 -> lr; the tail runs a compressed warmup+cosine of its own
+    highres_warmup_epochs: int = 1
     # crops
     global_crop_size: int = 0           # 0 -> data.canvas (DINOv2-faithful pretrain uses 224)
     local_crop_size: int = 98

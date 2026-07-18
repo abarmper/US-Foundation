@@ -1,0 +1,40 @@
+# Phase 1 -- DINOv2-faithful pretraining at FULL 518 resolution throughout (NO 224 bulk,
+# NO high-res tail). This is the expensive control: ~5x slower than the 224-bulk recipe
+# (that is exactly why DINOv2 pretrains at 224 then adapts to 518). Use it to measure
+# whether full-resolution SSL beats the 224+tail recipe -- expect a very long run, and
+# probe early checkpoints (configs/probe_phase1.yaml) rather than waiting for the end.
+run_name: phase1_dinov2_fullres
+phase: phase1
+seed: 42
+
+model:
+  backbone:
+    name: dinov2_vitl14_reg
+
+data:
+  data_root: data/data/train_data
+  num_workers: 8
+  canvas: 518
+
+phase1:
+  mode: dinov2
+  epochs: 100
+  global_crop_size: 518       # full resolution throughout
+  local_crop_size: 98
+  batch_size: 8               # 518 globals are heavy; small batch that fits an 80GB A100
+  grad_accum_steps: 32        # effective batch = 8 x 32 = 256
+  lr: 1.0e-4
+  weight_decay: 0.04
+  weight_decay_end: 0.2
+  warmup_epochs: 10
+  n_local_crops: 6
+  highres_epochs: 0           # no tail -- already at full res
+  # ultrasound augmentation (same as the 224+tail recipe)
+  global_scale_min: 0.32
+  local_scale_min: 0.05
+  local_scale_max: 0.32
+  aug: us_v2
+  foreground_crop: true
+  rotate_limit: 10
+  min_local_fg_frac: 0.02
+  mask_foreground: true
