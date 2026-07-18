@@ -35,8 +35,8 @@ phase1:
   #     the encoder features match the Phase-2 (518) downstream resolution ---
   highres_epochs: 4
   highres_crop_size: 518
-  highres_batch_size: 8         # 518 is ~5x heavier per image; smaller batch
-  highres_grad_accum_steps: 32  # keep effective batch ~256
+  highres_batch_size: 16        # bs16@518 fits ~67/80GB (measured); tail runs alone (bulk done)
+  highres_grad_accum_steps: 16  # keep effective batch 256 (16 x 16)
   highres_lr: 5.0e-5            # compressed warmup+cosine restart for the tail
   highres_warmup_epochs: 1
   # --- crops ---
