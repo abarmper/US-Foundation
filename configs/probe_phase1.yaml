@@ -1,0 +1,37 @@
+# Cheap Phase-1 probe: FROZEN-encoder short Phase-2 on fold 0. Isolates representation
+# quality (the encoder is frozen, only neck+heads train), runs in hours, and can be
+# pointed at an EARLY Phase-1 checkpoint (ep10/20) long before a full run finishes.
+#
+# Compare challenge_blend across three encoders on the same config:
+#   1) off-the-shelf DINOv2  -o phase1_weights=
+#   2) legacy DINO SSL       -o phase1_weights=runs/phase1_multicrop/checkpoints/dinov2_adapted_ep20.pth
+#   3) DINOv2-faithful SSL    -o phase1_weights=runs/phase1_dinov2/checkpoints/dinov2_adapted_ep20.pth
+# e.g.:
+#   python -m gubiometry phase2 --config configs/probe_phase1.yaml -o phase1_weights=<ckpt> -o run_name=probe_dv2_ep20
+run_name: probe_phase1
+phase: phase2
+seed: 42
+
+model:
+  backbone:
+    name: dinov2_vitl14_reg
+    unfreeze_last_n_blocks: 0   # FROZEN encoder -> probes representation quality only
+  neck:
+    input_mode: multilevel
+  heatmap_size: 148
+
+data:
+  data_root: data/data/train_data
+  kfold_dir: splits/kfold_v1
+  fold: 0
+  batch_size: 64
+  num_workers: 8
+  canvas: 518
+
+optim:
+  lr: 2.0e-4
+  epochs: 25
+  warmup_epochs: 3
+  early_stop_patience: 10
+  amp_dtype: bf16
+  select_metric: challenge_blend

@@ -90,15 +90,62 @@ class OptimConfig:
 
 @dataclass
 class Phase1Config:
-    mode: str = "multicrop"             # "sameview" | "multicrop"
+    mode: str = "multicrop"             # "sameview" | "multicrop" | "dinov2"
     epochs: int = 100
     batch_size: int = 8
     lr: float = 5e-5
     weight_decay: float = 1e-4
-    out_dim: int = 256
+    out_dim: int = 256                  # legacy DINO head width (multicrop mode)
     n_local_crops: int = 6
     num_workers: int = 8
     ema_alpha: float = 0.999
+    # --- "dinov2" mode: DINOv2-faithful recipe (all read only when mode == "dinov2";
+    #     defaults leave the legacy multicrop/sameview paths untouched) ---
+    grad_accum_steps: int = 1           # effective batch = batch_size * grad_accum_steps
+    # heads (vendored DINOHead)
+    dino_out_dim: int = 65536           # DINO prototypes; drop to 16384/32768 if occupancy collapses
+    ibot_out_dim: int = 0               # 0 -> same as dino_out_dim
+    ibot_separate_head: bool = True     # official vitl14 uses a separate iBOT head
+    head_hidden_dim: int = 2048
+    head_bottleneck_dim: int = 256
+    head_nlayers: int = 3
+    # loss weights
+    dino_loss_weight: float = 1.0
+    ibot_loss_weight: float = 1.0
+    koleo_weight: float = 0.1
+    # iBOT masking
+    mask_ratio_min: float = 0.1
+    mask_ratio_max: float = 0.5
+    mask_sample_probability: float = 0.5
+    mask_foreground: bool = True        # US: restrict masks to foreground (fan) patches
+    # temperatures / centering
+    warmup_teacher_temp: float = 0.04
+    teacher_temp: float = 0.07
+    warmup_teacher_temp_epochs: int = 30
+    student_temp: float = 0.1
+    center_momentum: float = 0.9
+    # EMA teacher momentum (cosine over effective steps)
+    momentum_base: float = 0.994
+    momentum_final: float = 1.0
+    # optim schedules
+    warmup_epochs: int = 10             # linear LR warmup (in epochs)
+    min_lr: float = 1e-6
+    weight_decay_end: float = 0.0       # 0 -> constant wd (= weight_decay); official uses 0.2
+    clip_grad: float = 3.0
+    freeze_last_layer_epochs: int = 1
+    # crops
+    global_crop_size: int = 0           # 0 -> data.canvas (DINOv2-faithful pretrain uses 224)
+    local_crop_size: int = 98
+    global_scale_min: float = 0.32
+    global_scale_max: float = 1.0
+    local_scale_min: float = 0.05
+    local_scale_max: float = 0.32
+    save_encoder_from: str = "teacher"  # "teacher" | "student"
+    # ultrasound augmentation
+    aug: str = "legacy"                 # "legacy" | "us_v2"
+    foreground_crop: bool = False       # pre-crop to the ultrasound fan bbox
+    rotate_limit: float = 45.0          # us_v2 recipe uses ~10
+    min_local_fg_frac: float = 0.0      # us_v2: resample local crops that are mostly black
 
 
 @dataclass

@@ -38,6 +38,9 @@ def _ckpt_dir(cfg):
 def train(cfg, logger=None):
     exp_dir = os.path.join(runs_dir(), cfg.run_name)
     logger = logger or create_logger(exp_dir, "phase1")
+    if cfg.phase1.mode == "dinov2":
+        from .phase1_dinov2 import train_dinov2      # lazy: only this path needs dino_ssl
+        return train_dinov2(cfg, logger)
     if cfg.phase1.mode == "sameview":
         return _train_sameview(cfg, logger)
     return _train_multicrop(cfg, logger)

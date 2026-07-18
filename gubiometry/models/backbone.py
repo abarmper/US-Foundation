@@ -46,27 +46,47 @@ class DummyBackbone(nn.Module):
     for any input whose side is a multiple of 14. Encoder params (blocks, norm)
     receive gradients so LLRD/unfreeze plumbing is exercised for real."""
 
-    def __init__(self, embed_dim=1024, depth=24, patch=14):
+    def __init__(self, embed_dim=1024, depth=24, patch=14, num_register_tokens=4):
         super().__init__()
         self.embed_dim = embed_dim
         self.patch_size = patch
+        self.num_register_tokens = num_register_tokens
         self.patch_embed = nn.Conv2d(3, embed_dim, kernel_size=patch, stride=patch)
         self.blocks = nn.ModuleList([_DummyBlock() for _ in range(depth)])
         self.norm = nn.LayerNorm(embed_dim)
+        # CLS / register / mask tokens -> lets the Phase-1 SSL path (which reads
+        # x_norm_clstoken and passes masks) be exercised on CPU with the dummy backbone.
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+        self.register_tokens = nn.Parameter(torch.zeros(1, num_register_tokens, embed_dim))
+        # small non-zero init: the dummy's pure-multiply blocks would otherwise keep a
+        # zero-init mask token exactly zero, and DINOHead's L2-normalize kills the gradient
+        # at exact zero (a degeneracy the real attention+residual backbone never hits).
+        self.mask_token = nn.Parameter(torch.randn(1, embed_dim) * 0.02)
 
-    def _run(self, x):
+    def _run(self, x, masks=None):
         f = self.patch_embed(x)              # (B, C, H, W)
         B, C, H, W = f.shape
         tok = f.flatten(2).transpose(1, 2)   # (B, N, C)
+        if masks is not None:                # swap in the mask token (mirrors prepare_tokens_with_masks)
+            tok = torch.where(masks.unsqueeze(-1), self.mask_token.to(tok.dtype).view(1, 1, C), tok)
         feats = []
         for blk in self.blocks:
             tok = blk(tok)
             feats.append(tok)
         return feats, (B, C, H, W)
 
-    def forward_features(self, x):
-        feats, _ = self._run(x)
-        return {"x_norm_patchtokens": self.norm(feats[-1])}
+    def forward_features(self, x, masks=None):
+        feats, (B, C, H, W) = self._run(x, masks=masks)
+        patches = self.norm(feats[-1])                                   # (B, N, C)
+        cls = self.norm(feats[-1].mean(dim=1) + self.cls_token.view(1, C))   # (B, C)
+        reg = self.norm(self.register_tokens.expand(B, -1, -1))          # (B, R, C)
+        return {
+            "x_norm_clstoken": cls,
+            "x_norm_regtokens": reg,
+            "x_norm_patchtokens": patches,
+            "x_prenorm": feats[-1],
+            "masks": masks,
+        }
 
     def get_intermediate_layers(self, x, n, reshape=True, norm=True, return_class_token=False):
         feats, (B, C, H, W) = self._run(x)

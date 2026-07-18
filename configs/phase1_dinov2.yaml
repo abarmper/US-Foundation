@@ -1,0 +1,45 @@
+# Phase 1 -- DINOv2-faithful continued pretraining (CLS DINO + iBOT MIM + KoLeo).
+# Opt-in via phase1.mode=dinov2. Produces dinov2_adapted_ep{N}.pth exactly like the
+# legacy multicrop recipe, so Phase-2 (phase1_weights=...) consumes it unchanged.
+#
+# Backbone must match the Phase-2 backbone (register variant). Pretraining runs at a
+# 224px global resolution (DINOv2-faithful, ~5x cheaper than 518); Phase-2 still uses
+# 518 (the ViT interpolates positional embeddings). Judge an early checkpoint fast with
+# configs/probe_phase1.yaml before committing to a full run.
+run_name: phase1_dinov2
+phase: phase1
+seed: 42
+
+model:
+  backbone:
+    name: dinov2_vitl14_reg     # must match the Phase-2 backbone
+
+data:
+  data_root: data/data/train_data
+  num_workers: 8
+  canvas: 518
+
+phase1:
+  mode: dinov2
+  epochs: 100
+  batch_size: 32              # 224px globals are ~5x lighter than 518; measure ep-1 and raise
+  grad_accum_steps: 8         # effective batch = 32 x 8 = 256 (DINO wants a large batch)
+  lr: 1.0e-4                  # gentle continued-pretraining LR (linear warmup then cosine)
+  weight_decay: 0.04
+  weight_decay_end: 0.2       # DINOv2-L cosine WD endpoint
+  warmup_epochs: 10
+  n_local_crops: 6
+  # heads / objective ride on the DINOv2-L dataclass defaults (dino_out_dim 65536,
+  # ibot separate head, koleo 0.1, teacher temp 0.04->0.07, momentum 0.994->1.0, clip 3.0)
+  # --- crops ---
+  global_crop_size: 224
+  local_crop_size: 98
+  global_scale_min: 0.32
+  local_scale_min: 0.05
+  local_scale_max: 0.32
+  # --- ultrasound augmentation ---
+  aug: us_v2
+  foreground_crop: true       # pre-crop to the ultrasound fan bbox
+  rotate_limit: 10            # gentle (US landmarks are orientation-semantic)
+  min_local_fg_frac: 0.02     # reject mostly-black local crops (best-of-N by variance)
+  mask_foreground: true       # iBOT masks land on tissue, not black surround

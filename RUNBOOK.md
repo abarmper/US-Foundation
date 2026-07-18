@@ -137,6 +137,29 @@ from the next epoch. Don't change `phase1.epochs`/`batch_size` on resume — the
 and cosine schedules are indexed by epoch count. Phase 2 folds resume the same way
 (`-o resume=runs/<fold_run>/checkpoints/latest_checkpoint.pth`).
 
+### DINOv2-faithful Phase 1 (`phase1.mode: dinov2`)
+The legacy `multicrop` recipe is a weak DINO (toy head, no iBOT/KoLeo, no LR warmup, small
+batch) — on fold 0 it does **not** beat off-the-shelf DINOv2 (`abl_nossl`). The `dinov2`
+mode is the full recipe: CLS-token DINO + **iBOT masked-patch loss** + KoLeo, a proper
+`DINOHead` (out_dim 65536, L2 bottleneck, weight-normed layer, no BN), teacher `eval()`,
+LR warmup + WD/momentum/teacher-temp schedules, **gradient accumulation** for a large
+effective batch, and **ultrasound-aware** augmentation (fan-foreground crops, gentle
+rotation, foreground iBOT masks). Same artifact format → Phase 2 consumes it unchanged.
+```bash
+CUDA_VISIBLE_DEVICES=<free> python -m gubiometry phase1 --config configs/phase1_dinov2.yaml
+# 224px globals, effective batch 256 (bs32 x accum8); adapted encoder -> runs/phase1_dinov2/checkpoints/dinov2_adapted_ep{N}.pth
+```
+**Measure before committing GPU-weeks.** The full run is long; judge an early checkpoint fast
+with the **frozen-encoder probe** (`configs/probe_phase1.yaml`, ~hours) — compare
+`challenge_blend` for off-the-shelf vs legacy-DINO vs dinov2 encoders on fold 0:
+```bash
+CUDA_VISIBLE_DEVICES=<free> python -m gubiometry phase2 --config configs/probe_phase1.yaml \
+  -o phase1_weights=runs/phase1_dinov2/checkpoints/dinov2_adapted_ep20.pth -o run_name=probe_dv2_ep20
+```
+Also watch `teacher_entropy` / `prototype_occupancy` in the log — a collapse shows on day 1.
+Resume: `-o resume=runs/phase1_dinov2/checkpoints/latest_checkpoint.pth` (dinov2 checkpoints
+are tagged and refuse cross-mode resume; keep `epochs`/`batch_size`/`grad_accum_steps` fixed).
+
 ---
 
 ## PROMISING ALTERNATIVE PATHS (ablations)

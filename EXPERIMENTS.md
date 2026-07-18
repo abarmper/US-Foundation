@@ -84,6 +84,7 @@ These need **no code change** — set them directly.
 
 | Knob | Default | Alternatives | Notes |
 |---|---|---|---|
+| `phase1.mode` | `multicrop` | `dinov2`, `sameview` | Phase-1 SSL objective. `dinov2` = DINOv2-faithful (CLS DINO + iBOT MIM + KoLeo, proper `DINOHead`, teacher eval, LR warmup, grad-accum, US-aware crops); see `configs/phase1_dinov2.yaml` + the RUNBOOK section. Same encoder artifact → Phase-2 unchanged. |
 | `model.backbone.name` | `dinov2_vitl14` | `dinov2_vits14`, `dinov2_vitb14`, `dinov2_vitg14` (+`_reg`) | Any DINOv2 size; embed dim auto-detected (Phase 1 & 2). A different size/variant **requires re-running Phase 1**. |
 | `model.heatmap_size` | `128` | `96`, `160` | Higher → finer soft-argmax sub-pixel precision (more memory). |
 | `model.neck.feature_layers` | `[5,11,17,23]` | e.g. `[2,5,8,11]` (shallower), `[11,17,20,23]` (deeper) | Which DINOv2 depths feed the neck (only when `input_mode=multilevel`). |

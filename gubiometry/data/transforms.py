@@ -175,6 +175,78 @@ def get_multicrop_transforms(global_size=518, local_size=98):
     return {"global": global_t, "local": local_t}
 
 
+class _NumpyMultiCrop:
+    """Albumentations-free fallback (CPU smoke venv): random-resized-crop + normalize + CHW tensor,
+    exposing the same `t(image=arr)["image"]` interface. No rotation/color aug (identity-ish)."""
+    def __init__(self, size, scale, mean, std):
+        self.size, self.scale = size, scale
+        self.mean = np.asarray(mean, dtype=np.float32).reshape(3, 1, 1)
+        self.std = np.asarray(std, dtype=np.float32).reshape(3, 1, 1)
+
+    def __call__(self, image):
+        import torch
+        from PIL import Image
+        h, w = image.shape[:2]
+        area = h * w
+        s = np.random.uniform(*self.scale)
+        ch = max(1, min(h, int(round((area * s) ** 0.5))))
+        cw = max(1, min(w, int(round((area * s) ** 0.5))))
+        top = np.random.randint(0, h - ch + 1)
+        left = np.random.randint(0, w - cw + 1)
+        crop = image[top:top + ch, left:left + cw]
+        arr = np.asarray(Image.fromarray(crop).resize((self.size, self.size))).astype(np.float32) / 255.0
+        arr = arr.transpose(2, 0, 1)                      # HWC -> CHW
+        arr = (arr - self.mean) / self.std
+        return {"image": torch.from_numpy(arr)}
+
+
+def get_multicrop_transforms_v2(global_size=224, local_size=98, global_scale=(0.32, 1.0),
+                                local_scale=(0.05, 0.32), rotate_limit=10.0, normalization="imagenet"):
+    """Ultrasound-aware DINOv2 multi-crop (2 global + N local). Same interface as
+    get_multicrop_transforms; differences: DINOv2 crop scales, gentler rotation on globals only,
+    aspect-ratio clamp, horizontal flip. Foreground/fan handling lives in the dataset
+    (MultiCropBiometryDataset) since it needs the raw image. Falls back to a numpy pipeline
+    when albumentations is unavailable (CPU smoke venv)."""
+    if normalization == "grayscale":
+        mean, std = (0.5, 0.5, 0.5), (0.5, 0.5, 0.5)
+    else:
+        mean, std = (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
+    try:
+        import albumentations as A
+        from albumentations.pytorch import ToTensorV2
+    except ImportError:
+        import warnings
+        warnings.warn("albumentations not installed; using numpy multi-crop fallback (no aug).")
+        return {"global": _NumpyMultiCrop(global_size, global_scale, mean, std),
+                "local": _NumpyMultiCrop(local_size, local_scale, mean, std)}
+
+    norm = [A.Normalize(mean=mean, std=std), ToTensorV2()]
+    color_noise = [
+        A.OneOf([
+            A.RandomBrightnessContrast(brightness_limit=0.4, contrast_limit=0.4, p=1.0),
+            A.RandomGamma(gamma_limit=(50, 150), p=1.0),
+            A.CLAHE(clip_limit=4.0, tile_grid_size=(8, 8), p=1.0),
+        ], p=0.7),
+        A.OneOf([
+            A.GaussianBlur(blur_limit=(3, 7), p=1.0),
+            A.GaussNoise(std_range=(0.05, 0.2), p=1.0),
+        ], p=0.5),
+    ]
+    ratio = (0.85, 1.18)
+    global_t = A.Compose([
+        A.RandomResizedCrop(size=(global_size, global_size), scale=tuple(global_scale), ratio=ratio, p=1.0),
+        A.HorizontalFlip(p=0.5),
+        A.Affine(rotate=(-rotate_limit, rotate_limit), p=0.5),
+        *color_noise, *norm,
+    ])
+    local_t = A.Compose([
+        A.RandomResizedCrop(size=(local_size, local_size), scale=tuple(local_scale), ratio=ratio, p=1.0),
+        A.HorizontalFlip(p=0.5),
+        *color_noise, *norm,
+    ])
+    return {"global": global_t, "local": local_t}
+
+
 # --------------------------------------------------------------------------- #
 # Test-time augmentation (safe views only -- NO naive flips; keypoints are semantic)
 # --------------------------------------------------------------------------- #

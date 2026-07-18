@@ -99,11 +99,13 @@ gubiometry/
   losses.py          soft_argmax_loss (+DSNT), mean_radial_error
   optim.py           LLRD param groups, scheduler, EMA
   models/            backbone.py (hub + DummyBackbone), neck.py (single|multilevel),
-                     heads.py, model.py (build_model_from_config)
+                     heads.py, model.py (build_model_from_config), dino_ssl.py (vendored
+                     DINOv2 heads/losses: DINOHead, DINO/iBOT/KoLeo, MaskingGenerator)
   data/              dataset.py, samplers.py, transforms.py, multicrop.py, splits.py (kfold)
-  engine/            phase1, phase2 (metric-aligned), kfold, predict (ensemble×TTA), evaluate
+  engine/            phase1 (multicrop|sameview), phase1_dinov2 (DINOv2-faithful SSL),
+                     phase2 (metric-aligned), kfold, predict (ensemble×TTA), evaluate
   testing/           synthetic.py (tiny data_root + dummy-backbone harness)
-configs/*.yaml       phase1_multicrop, phase2_baseline, phase2_upgraded, predict_ensemble
+configs/*.yaml       phase1_multicrop, phase1_dinov2, probe_phase1, phase2_baseline, phase2_upgraded, predict_ensemble
 src/visualization/   paper-figure scripts (rewired onto gubiometry via common.py)
 ```
 
