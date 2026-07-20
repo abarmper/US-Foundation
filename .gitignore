@@ -268,3 +268,29 @@ regression_predictions.zip
 
 # Claude Code machine-local settings
 .claude/settings.local.json
+
+
+# ============================================================
+# Local paper artifacts / large experiment folders
+# ============================================================
+
+# Large checkpoint folder accidentally created under docs
+docs/phase1_multicrop_checkpoints/
+
+# Generated LaTeX archive; do not version zip exports
+docs/latex_template.zip
+docs/*.zip
+
+# Extra model/checkpoint formats
+*.safetensors
+*.bin
+*.onnx
+
+# Large numpy / serialized experiment artifacts
+*.npy
+*.npz
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+
