@@ -124,6 +124,15 @@ def train_dinov2(cfg, logger=None):
 
     # --- models ---
     student = _DINOv2Wrapper(cfg.model.backbone.name, p1).to(device)
+    if p1.init_encoder and os.path.isfile(p1.init_encoder):
+        raw = torch.load(p1.init_encoder, map_location=device)
+        if isinstance(raw, dict) and "student_state_dict" in raw:
+            raw = raw["student_state_dict"]
+        if any(k.startswith("encoder.") for k in raw):
+            raw = {k[len("encoder."):]: v for k, v in raw.items() if k.startswith("encoder.")}
+        missing, unexpected = student.encoder.load_state_dict(raw, strict=False)
+        logger.info(f"Init encoder from {p1.init_encoder} | missing={len(missing)}, unexpected={len(unexpected)} "
+                    f"(heads start fresh)")
     teacher = _DINOv2Wrapper(cfg.model.backbone.name, p1).to(device)
     teacher.load_state_dict(student.state_dict())
     for p in teacher.parameters():
@@ -274,7 +283,9 @@ def train_dinov2(cfg, logger=None):
                     f"teacher_entropy {entropy:.3f} occupancy {occupancy:.3f}")
 
         src = teacher if p1.save_encoder_from == "teacher" else student
-        if (epoch + 1) % 10 == 0 or (epoch + 1) == total_epochs or (epoch + 1) == p1.epochs:
+        # save the encoder every 10 bulk epochs, at the bulk boundary, at the very end, AND every
+        # tail epoch (tails are short -> keep each so ep4/ep5 etc. can be probed).
+        if (epoch + 1) % 10 == 0 or (epoch + 1) == total_epochs or (epoch + 1) == p1.epochs or in_tail:
             path = os.path.join(ckpt_dir, f"dinov2_adapted_ep{epoch+1}.pth")
             torch.save(src.encoder.state_dict(), path)
             logger.info(f"--> saved adapted encoder -> {path}")

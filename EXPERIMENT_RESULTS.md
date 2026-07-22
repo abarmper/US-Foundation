@@ -25,9 +25,11 @@ Sorted by `challenge_blend`. All fold 0, unfreeze 4, 150 ep.
 
 | Run | SSL | recipe | neck | decoder | s_temp | blend ↓ | MRE | status |
 |---|---|---|---|---|---|---|---|---|
-| `abl_ep20_simplehead_dv2ep20` | **NEW** ep20 | upgraded | single | **simple** | 0.5 | **0.0738*** | 27.65 | ⏳ running ep21 |
-| `abl_nossl_fold0` | none | simple | single | hrnet | 0.0 | **0.0740** | 28.98 | ✅ done |
+| `abl_ep20_simplehead_ml_dv2ep20` | **NEW** ep20 | upgraded | multilevel-**concat** | **simple** | 0.5 | **0.0696** | **25.98** | ✅ done — **best (both metrics)** |
+| `abl_ep20_simplehead_dv2ep20` | **NEW** ep20 | upgraded | single | **simple** | 0.5 | 0.0721 | 27.69 | ✅ done (early-stop ep62; best@23) |
+| `abl_nossl_fold0` | none | simple | single | hrnet | 0.0 | 0.0740 | 28.98 | ✅ done |
 | `phase2_simple_dv2ep20` | **NEW** ep20 | simple | single | hrnet | 0.0 | 0.0791 | 28.85 | ✅ done |
+| `abl_ep20_upgraded_dv2ep20` | **NEW** ep20 | upgraded | multilevel | hrnet | 0.5 | 0.0842 | 26.70 | ✅ done |
 | `abl_ep20_upgraded` | old ep20 | upgraded | multilevel | hrnet | 0.5 | 0.0946 | 31.41 | ✅ done |
 | `phase2_baseline_fold0_ssl20` | old ep20 | simple | single | hrnet | 0.0 | 0.0973 | 33.95 | ✅ done |
 | `phase2_upgraded_fold0` | old ep10 | upgraded | multilevel | hrnet | 0.5 | 0.1006 | 31.12 | ✅ done |
@@ -35,7 +37,10 @@ Sorted by `challenge_blend`. All fold 0, unfreeze 4, 150 ep.
 | `abl_ep20_sampletemp0` | old ep20 | upgraded | multilevel | hrnet | **0.0** | 0.1135 | 30.05 | ✅ done |
 | `abl_ep20_simplehead` | old ep20 | upgraded | single | **simple** | 0.5 | 0.1214 | 47.54 | ✅ done |
 
-\* `abl_ep20_simplehead_dv2ep20` is **still running** (ep21/150) — 0.0738 is best-so-far, provisional.
+Note: `abl_ep20_simplehead_dv2ep20`'s best blend (0.0721) was set at ep23 and selected on
+`challenge_blend`; its **MRE kept improving afterward** (27.69 → 26.78 by ep62) while the AvgMAE
+half drifted up, so the ep23 "best" caught an AvgMAE-lucky epoch. On `average_mre` it would score
+better/later — a reminder that `challenge_blend` selection is noisier than MRE alone.
 
 ---
 
@@ -82,9 +87,21 @@ Upgraded recipe, unfreeze 4, 150 ep, old `multicrop` ep20 encoder.
 1. **The old SSL hurts.** Every legacy-`multicrop` full-FT run loses to no-SSL (`abl_nossl` 0.0740). The frozen probe shows why: the legacy encoder is *worse than off-the-shelf* (probe legacy ep10 0.145 / ep20 0.097, both above no-SSL 0.089) — the weak head degraded DINOv2's features.
 2. **The new SSL fixed the encoder.** Frozen probe: NEW ep20 (0.0782, MRE **24.70**) is the **best representation of all** — beats off-the-shelf (0.0890) and improves ep10→ep20 (0.0872→0.0782). Its frozen MRE even beats the best *fine-tuned* model.
 3. **But full fine-tuning erases most of that edge.** With unfreeze-4 + 150 ep, NEW-ep20 in the *simple* recipe (0.0791) lands just behind no-SSL (0.0740). A better starting point ≠ better fine-tuned optimum here.
-4. **Open / promising:** NEW-ep20 with the **simple decoder + upgraded knobs** (`abl_ep20_simplehead_dv2ep20`) is *provisionally* at 0.0738 (ep21, still running) — the first full-FT run to edge past `abl_nossl`. Watch it converge before concluding.
+4. **New fold-0 champion:** NEW-ep20 with the **simple (ViTPose) decoder + upgraded knobs**
+   (`abl_ep20_simplehead_dv2ep20`) finished at **0.0721 / MRE 27.69** — the **first full-FT run to
+   beat no-SSL** (0.0740), and on MRE too (27.69 vs 28.98). Notably, the *simple decoder that was
+   worst with the old SSL (0.1214) is best with the new SSL* — the earlier "simple decoder loses"
+   verdict was confounded by the bad legacy encoder.
 5. **`sample_temp`** is a tradeoff, not a harm: balanced (0.0) gives best MRE (30.05) but worse blend.
-6. **Champion so far (fold 0):** `abl_nossl_fold0` **0.0740** — but the new-SSL runs are now competitive, unlike the old ones.
+6. **Champion (fold 0, by `challenge_blend`): `abl_ep20_simplehead_dv2ep20` 0.0721** (new SSL, simple
+   decoder), ahead of `abl_nossl` 0.0740. n=1 fold — confirm across folds.
+7. **New SSL beats old SSL, cleanly confirmed in the full pipeline:** identical upgraded-HRNet recipe,
+   `abl_ep20_upgraded_dv2ep20` (new ep20) **0.0842 / MRE 26.70** vs `abl_ep20_upgraded` (old ep20)
+   0.0946 / 31.41. The redesign pays off with everything else held fixed.
+8. **Metric split (localization vs competition metric):** on raw **MRE**, upgraded-**HRNet** + new SSL
+   is best of all fold-0 full-FT runs (**26.70**); on **`challenge_blend`** (the 50/50 competition
+   metric), the **simple** decoder + new SSL wins (0.0721) via a better measurement-MAE half. So
+   HRNet = best localization, simple decoder = best competition score.
 
 ## Untested combinations (with NEW SSL)
 - **Upgraded recipe + HRNet + full FT + NEW ep20** — the natural "best recipe on best encoder" run; only exists *frozen* so far.

@@ -140,6 +140,9 @@ class Phase1Config:
     highres_grad_accum_steps: int = 0   # 0 -> grad_accum_steps (usually larger to keep the effective batch)
     highres_lr: float = 0.0             # 0 -> lr; the tail runs a compressed warmup+cosine of its own
     highres_warmup_epochs: int = 1
+    init_encoder: str = ""              # dinov2 mode: init the student/teacher encoder from this
+                                        # bare-encoder checkpoint (heads start fresh). Lets a tail run
+                                        # start from a mid-bulk checkpoint. Set epochs=0 for a pure tail.
     # crops
     global_crop_size: int = 0           # 0 -> data.canvas (DINOv2-faithful pretrain uses 224)
     local_crop_size: int = 98
