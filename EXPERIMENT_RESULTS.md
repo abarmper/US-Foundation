@@ -26,6 +26,7 @@ Sorted by `challenge_blend`. All fold 0, unfreeze 4, 150 ep.
 | Run | SSL | recipe | neck | decoder | s_temp | blend ↓ | MRE | status |
 |---|---|---|---|---|---|---|---|---|
 | `abl_ep20_simplehead_ml_dv2ep20` | **NEW** ep20 | upgraded | multilevel-**concat** | **simple** | 0.5 | **0.0696** | **25.98** | ✅ done — **best (both metrics)** |
+| `abl_ep20_simplehead_ml_dv2ep104` | **NEW ep104** (224 bulk + 518 tail, best-probed) | upgraded | multilevel-**concat** | **simple** | 0.5 | `TBD` | `TBD` | 🔄 running (started 2026-07-24 09:00, GPU 0) |
 | `abl_ep20_simplehead_dv2ep20` | **NEW** ep20 | upgraded | single | **simple** | 0.5 | 0.0721 | 27.69 | ✅ done (early-stop ep62; best@23) |
 | `abl_nossl_fold0` | none | simple | single | hrnet | 0.0 | 0.0740 | 28.98 | ✅ done |
 | `phase2_simple_dv2ep20` | **NEW** ep20 | simple | single | hrnet | 0.0 | 0.0791 | 28.85 | ✅ done |
@@ -134,8 +135,11 @@ upgraded knobs (heatmap 148, llrd 0.75, sample_temp 0.5, original loss, dsnt 0.1
 `ep104` was only probed frozen (0.0747) — has not yet been full-fine-tuned with the champion recipe.
 
 ## Untested / next
-- **Full fine-tune the champion recipe on `ep104`** (not yet done — only frozen-probed; likely the
-  single most promising next run given `ep104` beats `ep20` frozen).
+- **Full fine-tune the champion recipe on `ep104`** — 🔄 **in progress** (`abl_ep20_simplehead_ml_dv2ep104`,
+  started 2026-07-24 09:00, GPU 0). Once done, compare against `ep20`'s 0.0696 to see whether the
+  better-probed encoder (0.0747 vs 0.0782 frozen) actually translates to a better full-FT result.
+  Still outstanding: the same test on `phase1_dinov2_tail_from_ep60` (probed 0.0748 at ep5, cheaper
+  Phase-1 path) — not yet launched.
 - **Confirm across folds 1–4** with the champion recipe (needed before any ensemble/submission).
 - **Later encoder checkpoint** (ep60 exists, SSL still improving) with the champion recipe — likely more headroom.
 - Intermediate unfreeze depth (6/8), `coord_loss=wing`, `measurement_lambda>0`, with NEW SSL.
