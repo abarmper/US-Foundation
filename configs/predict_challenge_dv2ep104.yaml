@@ -1,0 +1,16 @@
+# Single-model prediction on the real challenge val set -> submission.zip.
+# Model: abl_ep20_simplehead_ml_dv2ep104 (NEW-SSL ep104 encoder, multilevel-concat
+# simple decoder, full fine-tune) -- best-MRE fold-0 result so far (24.61px).
+run_name: predict_challenge_dv2ep104
+phase: predict
+
+predict:
+  member_run_dirs:
+    - runs/abl_ep20_simplehead_ml_dv2ep104
+  checkpoint_name: best_teacher_model.pth
+  image_dir: data/data/val_data       # challenge <task>/<file> layout, no labels
+  tta_canvases: [490, 518, 546]       # multi-scale TTA (all % 14 == 0)
+  tta_intensity: true
+  average_space: coord
+  out_json: submission_dv2ep104.json
+  zip_output: true
