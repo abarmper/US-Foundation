@@ -11,7 +11,7 @@ import torch.nn as nn
 
 from ..constants import TASK_KEYPOINTS
 from .backbone import load_backbone, get_multilevel_features
-from .neck import TrueHRNetNeck, SimpleDecoder
+from .neck import TrueHRNetNeck, SimpleDecoder, DPTNeck
 from .heads import TaskSpecificHead, make_spatial_reasoning_trunk
 
 
@@ -48,8 +48,12 @@ class UnifiedBiometryModel(nn.Module):
                 in_channels=self.embed_dim, out_channels=128,
                 branch_width=neck_branch_width, dropout_p=dropout_p, input_mode=self.input_mode,
             )
+        elif neck_decoder == "dpt":
+            if input_mode != "multilevel":
+                raise ValueError("neck.decoder='dpt' requires neck.input_mode='multilevel'")
+            self.shared_upsampler = DPTNeck(in_channels=self.embed_dim, out_channels=128, dropout_p=dropout_p)
         else:
-            raise ValueError(f"Unknown neck decoder: {neck_decoder!r} (hrnet|simple)")
+            raise ValueError(f"Unknown neck decoder: {neck_decoder!r} (hrnet|simple|dpt)")
 
         if shared_head:
             self.shared_trunk = make_spatial_reasoning_trunk(

@@ -157,6 +157,108 @@ class SimpleDecoder(nn.Module):
         return self.net(feats)                         # -> (B, out_channels, 148, 148)
 
 
+class ResidualConvUnit(nn.Module):
+    """DPT/RefineNet pre-activation residual block: ReLU->Conv3x3+GN->ReLU->Conv3x3+GN,
+    added back to the input."""
+    def __init__(self, channels):
+        super().__init__()
+        # inplace=False on the first ReLU: it acts on `x`, which forward() also reuses
+        # for the residual add below -- an inplace op here would corrupt that add's
+        # autograd graph (RuntimeError on backward). The second ReLU acts on a fresh
+        # intermediate tensor with no other consumer, so inplace is safe there.
+        self.net = nn.Sequential(
+            nn.ReLU(inplace=False),
+            nn.Conv2d(channels, channels, kernel_size=3, padding=1, bias=False),
+            group_norm(channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(channels, channels, kernel_size=3, padding=1, bias=False),
+            group_norm(channels),
+        )
+
+    def forward(self, x):
+        return x + self.net(x)
+
+
+class FeatureFusionBlock(nn.Module):
+    """DPT/RefineNet top-down fusion stage: `skip` (plus an optional `skip2` at the
+    same resolution, for the two ViT taps that land at the finest branch) each pass
+    through their own RCU and are summed; the previous (coarser) stage's output is
+    upsampled and added in; a final RCU produces this stage's output."""
+    def __init__(self, channels, scale_factor=2):
+        super().__init__()
+        self.rcu_skip = ResidualConvUnit(channels)
+        self.rcu_skip2 = ResidualConvUnit(channels)
+        self.rcu_out = ResidualConvUnit(channels)
+        self.upsample = (nn.Identity() if scale_factor == 1 else
+                          nn.Upsample(scale_factor=scale_factor, mode="bilinear", align_corners=False))
+
+    def forward(self, skip, prev=None, skip2=None):
+        out = self.rcu_skip(skip)
+        if skip2 is not None:
+            out = out + self.rcu_skip2(skip2)
+        if prev is not None:
+            out = out + self.upsample(prev)
+        return self.rcu_out(out)
+
+
+class DPTNeck(nn.Module):
+    """DPT/RefineNet-style decoder -- a third alternative to TrueHRNetNeck/SimpleDecoder.
+
+    Unlike SimpleDecoder's undifferentiated channel-concat, each of the 4 DINOv2 depths
+    gets its own projection and participates in an explicit top-down progressive fusion
+    (coarsest-to-finest), each stage combining a per-depth-projected skip connection with
+    the previous (coarser) stage's output via residual conv units -- the actual DPT/
+    RefineNet fusion mechanism, not the HRNet bidirectional-exchange-then-sum, and not
+    SimpleDecoder's single concat-then-deconv.
+
+    Reuses the same per-depth resolution assignment as MultiLevelReassemble/TrueHRNetNeck
+    (deepest g23->37, g17->74, {g11, g05}->148) so featurization is identical to the other
+    two multilevel decoders -- only the fusion mechanism differs. g11 and g05 both land at
+    148 and are fused as two skip connections into ONE stage (matching this file's own
+    `proj_b3(g11) + proj_b3_aux(g05)` precedent for "two taps, one resolution"), not two
+    sequential stages.
+
+    Multilevel-only: forward() requires a 4-tuple; there is nothing to progressively fuse
+    with a single depth (the caller in model.py enforces input_mode='multilevel').
+
+    Heavier than SimpleDecoder (~24M vs ~18M params at fusion_channels=256) -- almost all
+    of the extra weight is the 4 separate per-depth projections (proj_g11/proj_g05 alone
+    ~10.5M via _DeconvX2), which is also exactly the thing DPT does differently from
+    SimpleDecoder's undifferentiated concat. GroupNorm throughout, matching the rest of
+    the neck/heads.
+    """
+    def __init__(self, in_channels=1024, out_channels=128, fusion_channels=256, dropout_p=0.3):
+        super().__init__()
+        self.proj_g23 = nn.Sequential(
+            nn.Conv2d(in_channels, fusion_channels, kernel_size=1, bias=False),
+            group_norm(fusion_channels),
+        )
+        self.proj_g17 = nn.Sequential(
+            nn.ConvTranspose2d(in_channels, fusion_channels, kernel_size=4, stride=2, padding=1, bias=False),
+            group_norm(fusion_channels),
+            nn.ReLU(inplace=True),
+        )
+        self.proj_g11 = _DeconvX2(in_channels, fusion_channels)
+        self.proj_g05 = _DeconvX2(in_channels, fusion_channels)
+
+        self.fuse_37 = FeatureFusionBlock(fusion_channels)   # no prev at the coarsest stage (scale_factor unused)
+        self.fuse_74 = FeatureFusionBlock(fusion_channels, scale_factor=2)   # prev=f37 @37 -> 74
+        self.fuse_148 = FeatureFusionBlock(fusion_channels, scale_factor=2)  # prev=f74 @74 -> 148
+
+        self.dropout = nn.Dropout2d(p=dropout_p)
+        self.out_proj = nn.Sequential(
+            nn.Conv2d(fusion_channels, out_channels, kernel_size=1, bias=False),
+            group_norm(out_channels),
+        )
+
+    def forward(self, feats):
+        g05, g11, g17, g23 = feats                       # shallow..deep, matches TrueHRNetNeck's unpacking
+        f37 = self.fuse_37(skip=self.proj_g23(g23))
+        f74 = self.fuse_74(skip=self.proj_g17(g17), prev=f37)
+        f148 = self.fuse_148(skip=self.proj_g11(g11), skip2=self.proj_g05(g05), prev=f74)
+        return self.out_proj(self.dropout(f148))          # -> (B, out_channels, 148, 148)
+
+
 class TrueHRNetNeck(nn.Module):
     def __init__(self, in_channels=1024, out_channels=128, branch_width=(128, 96, 64),
                  dropout_p=0.3, input_mode="single"):

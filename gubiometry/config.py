@@ -36,8 +36,10 @@ class NeckConfig:
     feature_layers: tuple = (5, 11, 17, 23)
     shared_head: bool = False
     decoder: str = "hrnet"               # post-backbone decoder: "hrnet" (multi-branch fusion) | "simple"
-                                         # ("simple" = ViTPose-style deconv upsampler; uses the last-layer
-                                         #  grid, so input_mode/feature_layers are ignored under it)
+                                         # (ViTPose-style deconv upsampler; concatenates feature_layers
+                                         #  depths when input_mode=multilevel, else uses the last-layer
+                                         #  grid) | "dpt" (DPT/RefineNet-style top-down progressive
+                                         #  fusion of feature_layers depths; multilevel-only)
 
 
 @dataclass
