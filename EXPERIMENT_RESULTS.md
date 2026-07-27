@@ -25,8 +25,8 @@ Sorted by `challenge_blend`. All fold 0, unfreeze 4, 150 ep.
 
 | Run | SSL | recipe | neck | decoder | s_temp | blend ↓ | MRE | status |
 |---|---|---|---|---|---|---|---|---|
-| `abl_ep20_simplehead_ml_dv2ep20` | **NEW** ep20 | upgraded | multilevel-**concat** | **simple** | 0.5 | **0.0696** | **25.98** | ✅ done — **best (both metrics)** |
-| `abl_ep20_simplehead_ml_dv2ep104` | **NEW ep104** (224 bulk + 518 tail, best-probed) | upgraded | multilevel-**concat** | **simple** | 0.5 | `TBD` | `TBD` | 🔄 running (started 2026-07-24 09:00, GPU 0) |
+| `abl_ep20_simplehead_ml_dv2ep20` | **NEW** ep20 | upgraded | multilevel-**concat** | **simple** | 0.5 | **0.0696** | **25.98** | ✅ done — **best blend** |
+| `abl_ep20_simplehead_ml_dv2ep104` | **NEW** ep104 (224 bulk + 518 tail) | upgraded | multilevel-**concat** | **simple** | 0.5 | 0.0717 | 24.61 | ✅ done — best@ep68, early-stopped@ep108 — **best MRE**, 2nd-best blend |
 | `abl_ep20_simplehead_dv2ep20` | **NEW** ep20 | upgraded | single | **simple** | 0.5 | 0.0721 | 27.69 | ✅ done (early-stop ep62; best@23) |
 | `abl_nossl_fold0` | none | simple | single | hrnet | 0.0 | 0.0740 | 28.98 | ✅ done |
 | `phase2_simple_dv2ep20` | **NEW** ep20 | simple | single | hrnet | 0.0 | 0.0791 | 28.85 | ✅ done |
@@ -51,20 +51,39 @@ All fold 0, unfreeze **0**, 25 ep, upgraded-recipe knobs (multilevel/heatmap148/
 
 | Probe | SSL | blend ↓ | MRE |
 |---|---|---|---|
-| `probe_dv2_ep104` | **NEW ep104 — final, 224 bulk + 518 TAIL** | **0.0747** | 25.09 |
+| `probe_dv2_ep104` | **NEW ep104 — final, 224 bulk(100) + 518 TAIL** | **0.0747** | 25.09 |
+| `probe_dv2_tail_ep60_ep5` | **NEW — 224 bulk(60) + 5-ep 518 tail (fresh heads)** | **0.0748** | 25.23 |
+| `probe_dv2_tail_ep60_ep10` | **NEW — 224 bulk(60) + 10-ep 518 tail (fresh heads)** | 0.0755 | 25.50 |
 | `probe_dv2_ep20` | **NEW** ep20, 224px (bulk only) | 0.0782 | **24.70** |
+| `probe_dv2_ep60` | **NEW** ep60, 224px (bulk only) | 0.0836 | 26.43 |
 | `probe_dv2_ep10` | **NEW** ep10, 224px (bulk only) | 0.0872 | 26.88 |
 | `probe_nossl` | none | 0.0890 | 31.27 |
 | `probe_dv2fullres_ep20` | **NEW** ep20, 518px (full-res, no downsampling) | 0.0901 | 25.96 |
 | `probe_legacy_ep20` | old ep20 | 0.0965 | 33.11 |
 | `probe_dv2_ep100` | **NEW ep100 — end of 224 bulk, NO tail** | 0.0974 | 25.95 |
+| `probe_dv2fullres_ep30` | **NEW** ep30, 518px (full-res, no downsampling) | 0.0934 | 26.92 |
 | `probe_legacy_ep10` | old ep10 | 0.1453 | 47.08 |
+
+**Bulk-only quality declines monotonically with more 224 training:** ep20 0.0782 < ep60 0.0836 <
+ep100 0.0974 — earlier bulk stop = better representation. **But a short 518 tail rescues an early
+checkpoint to match the full one:** ep60 + 5-epoch tail (0.0748) ≈ ep104 = ep100 + tail (0.0747),
+identical within noise, *despite* the ep60 tail using fresh heads. So the **tail is the dominant
+factor, not bulk length** — ~40 bulk epochs can be cut with no downstream loss.
+
+**Longer tails don't help further, and may mildly hurt:** ep60 + 10-ep tail (0.0755) is *not* better
+than ep60 + 5-ep tail (0.0748) or the fully-bulk-trained ep104 (0.0747) — all three sit within noise
+of each other. So ~5 epochs at 518 is already enough to capture the tail's benefit; epochs 6-10 add
+cost with no measurable further gain.
 
 **The 518 high-res tail is a large, clean win:** `ep104` (with tail) vs `ep100` (same run, no tail) —
 **0.0747 vs 0.0974 (~23% better)**, isolating exactly the 4-epoch tail's effect. `ep104` is now the
 **best frozen probe of any encoder**, ahead of `ep20`. Curiously `ep100` (100 bulk epochs, no tail) is
 *worse* than `ep20` (20 bulk epochs) — more 224-only bulk training alone doesn't help past a point;
 only the resolution-matched tail does.
+
+**The full-res-only control shows the same non-monotonic bulk pattern:** ep30 (0.0934) is worse than
+ep20 (0.0901) — consistent with finding #12 (more bulk-only epochs alone don't help, downsampled or
+not) and still well behind the downsampled-bulk-then-tail design at any matched checkpoint.
 
 ---
 
@@ -97,9 +116,12 @@ Upgraded recipe, unfreeze 4, 150 ep, old `multicrop` ep20 encoder.
 1. **The old SSL hurts.** Every legacy-`multicrop` full-FT run loses to no-SSL (`abl_nossl` 0.0740). The frozen probe shows why: the legacy encoder is *worse than off-the-shelf* (probe legacy ep10 0.145 / ep20 0.097, both above no-SSL 0.089) — the weak head degraded DINOv2's features.
 2. **The new SSL fixed the encoder.** Frozen probe: NEW ep20 (0.0782, MRE **24.70**) is the **best representation of all** — beats off-the-shelf (0.0890) and improves ep10→ep20 (0.0872→0.0782). Its frozen MRE even beats the best *fine-tuned* model.
 3. **But full fine-tuning erases most of that edge.** With unfreeze-4 + 150 ep, NEW-ep20 in the *simple* recipe (0.0791) lands just behind no-SSL (0.0740). A better starting point ≠ better fine-tuned optimum here.
-4. **Champion (fold 0, both metrics): `abl_ep20_simplehead_ml_dv2ep20` — 0.0696 / MRE 25.98.**
+4. **Champion (fold 0, blend): `abl_ep20_simplehead_ml_dv2ep20` — 0.0696 / MRE 25.98.**
    NEW ep20 + **simple (ViTPose) decoder that CONCATENATES 4 DINOv2 depths** (multi-level concat).
-   Best of everything on `challenge_blend` *and* MRE, and clearly beats no-SSL (0.0740 / 28.98).
+   Best `challenge_blend` of everything, and clearly beats no-SSL (0.0740 / 28.98). The same recipe
+   on the later `ep104` encoder (224 bulk + 518 tail) is very close behind on blend (0.0717) and
+   actually **wins on MRE** (24.61 vs 25.98) — the two encoders are close to a wash on full fine-tune,
+   unlike the much larger gap seen frozen (finding #13).
 5. **The winning architecture = multi-level features + a *simple concat* decoder, NOT the heavy HRNet
    sum.** The three multi-level runs on the new encoder rank: HRNet-sum 0.0842 > simple-single 0.0721
    > **simple-concat 0.0696**. So (a) multi-level depth helps, (b) a minimal decoder consuming it
@@ -126,21 +148,46 @@ Upgraded recipe, unfreeze 4, 150 ep, old `multicrop` ep20 encoder.
 12. **More 224-only bulk epochs alone stop helping (and can hurt) past a point.** `ep100` (100 bulk
     epochs, no tail) scores *worse* (0.0974) than `ep20` (20 bulk epochs, 0.0782) — bulk-only training
     plateaus/wobbles; only the resolution-matched tail reliably improves it further (finding #11).
+13. **Full fine-tuning compresses the frozen-probe gap between checkpoints.** Frozen, `ep104` beats
+    `ep20` by a lot (0.0747 vs 0.0782). Fully fine-tuned (champion recipe, unfreeze 4, 150 ep), the
+    two are close: `ep20` 0.0696/25.98 vs `ep104` 0.0717/24.61 — `ep104` wins MRE, `ep20` wins blend,
+    both within noise of each other. Encoder-quality differences that show up frozen partly wash out
+    once the backbone itself is allowed to adapt during Phase 2.
+14. **Longer 518 tails (5→10 epochs) don't help further, and may mildly hurt.** Frozen probe:
+    ep60+5-ep tail (0.0748) ≈ ep60+10-ep tail (0.0755) ≈ the fully-bulk-trained ep104 (0.0747) — all
+    within noise. ~5 epochs at 518 already captures the tail's benefit.
+15. **The full-res-only control (`phase1_dinov2_fullres`) shows the same non-monotonic bulk pattern**
+    as the downsampled run: frozen probe ep30 (0.0934) is worse than ep20 (0.0901) — more bulk-only
+    epochs alone don't help regardless of resolution, and this line remains behind the
+    downsampled-bulk-then-tail design at every matched checkpoint so far.
 
 ## Recommended recipe so far (fold 0)
-**NEW-SSL encoder (prefer the final `ep104` — 224 bulk + 518 tail, currently the best-probed
-representation) + multilevel `input_mode` + `decoder: simple` (concat) + full fine-tune (unfreeze 4) +
-upgraded knobs (heatmap 148, llrd 0.75, sample_temp 0.5, original loss, dsnt 0.1, bf16).** =
-`abl_ep20_simplehead_ml` config. Best full-FT result so far used `ep20` and scored **0.0696 / 25.98**;
-`ep104` was only probed frozen (0.0747) — has not yet been full-fine-tuned with the champion recipe.
+**NEW-SSL encoder + multilevel `input_mode` + `decoder: simple` (concat) + full fine-tune (unfreeze 4)
++ upgraded knobs (heatmap 148, llrd 0.75, sample_temp 0.5, original loss, dsnt 0.1, bf16).** =
+`abl_ep20_simplehead_ml` config. Two full-FT results now exist and are close: `ep20` **0.0696 / 25.98**
+(best blend) and `ep104` (224 bulk + 518 tail) **0.0717 / 24.61** (best MRE) — pick by which metric
+the submission should optimize; `ep104` is the more expensive checkpoint to produce (104 vs 20 Phase-1
+epochs) for a blend result that's currently *slightly worse*, so `ep20` remains the practical default
+until this is confirmed across folds.
+
+## Currently running / idle
+- `phase1_dinov2_fullres` (518-throughout control) was silently evicted mid-epoch-31 (no traceback,
+  the usual shared-box pattern) and is **not currently running**; last complete checkpoint is
+  `dinov2_adapted_ep30.pth`. Resume with `-o
+  resume=runs/phase1_dinov2_fullres/checkpoints/latest_checkpoint.pth` on a free GPU if this control
+  run should keep going.
+- 🔄 `abl_ep20_simplehead_ml_dv2tailep60ep5` (champion recipe, full fine-tune of the cheap
+  ep60+5-epoch-tail encoder) running on GPU 0 — tests whether the ~40-bulk-epoch-cheaper checkpoint
+  (frozen probe 0.0748, tied with `ep104`'s 0.0747) also holds up under full fine-tune.
+- 🔄 `predict_challenge_dv2ep104` (single-model, multi-scale+intensity TTA, `abl_ep20_simplehead_ml_dv2ep104`
+  checkpoint) running on GPU 4 against the real challenge val set (`data/data/val_data`) ->
+  `submission_dv2ep104.zip` — the first actual Codabench-format submission produced this project.
 
 ## Untested / next
-- **Full fine-tune the champion recipe on `ep104`** — 🔄 **in progress** (`abl_ep20_simplehead_ml_dv2ep104`,
-  started 2026-07-24 09:00, GPU 0). Once done, compare against `ep20`'s 0.0696 to see whether the
-  better-probed encoder (0.0747 vs 0.0782 frozen) actually translates to a better full-FT result.
-  Still outstanding: the same test on `phase1_dinov2_tail_from_ep60` (probed 0.0748 at ep5, cheaper
-  Phase-1 path) — not yet launched.
-- **Confirm across folds 1–4** with the champion recipe (needed before any ensemble/submission).
+- **Confirm across folds 1–4** with the champion recipe on both `ep20` and `ep104` (needed before any
+  ensemble/submission, and would settle which encoder is actually better).
+- Resume/continue `phase1_dinov2_fullres` if the full-res control is still wanted — currently stalled
+  at ep30 (idle GPUs available).
 - **Later encoder checkpoint** (ep60 exists, SSL still improving) with the champion recipe — likely more headroom.
 - Intermediate unfreeze depth (6/8), `coord_loss=wing`, `measurement_lambda>0`, with NEW SSL.
 - NEW-**fullres** encoder (`phase1_dinov2_fullres`, 518-throughout) — Phase-1 still training; no Phase-2 uses it yet.
