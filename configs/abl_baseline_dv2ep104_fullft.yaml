@@ -1,0 +1,75 @@
+# Legacy Phase-2 recipe (same as p2_baseline_nossl / abl_nossl) but with the NEW-SSL
+# ep104 encoder (224 bulk + 518 tail) instead of no-SSL, FULL backbone fine-tune
+# (unfreeze_last_n_blocks 4 -> 24, all DINOv2-L blocks + final norm), and evaluated
+# properly on 5-fold CV instead of the leaky holdout.
+#
+# Motivation: runs/p2_baseline_nossl scored 0.0770/23.85 on the HOLDOUT split, but that
+# number is NOT trustworthy (EXPERIMENT_RESULTS.md flags 81% train/val overlap with
+# fold-0's train set -- do not treat it as a bar to beat). What IS a genuinely new,
+# non-redundant question: full backbone fine-tuning has only been tested with the OLD
+# SSL (abl_ep20_fullft, old ep20); partial fine-tuning (unfreeze 4) has only been tested
+# with the NEW SSL (the champion family). This config is the missing cell: full-FT + new
+# SSL, done honestly on 5-fold this time.
+#
+# llrd_decay=0.75 (not p2_baseline_nossl's original 1.0): matches the abl_ep20_fullft
+# precedent -- uniform LR across all 24 blocks during full fine-tuning risks
+# destabilizing/forgetting shallow features; llrd_decay=0.75 lets deep layers move most
+# and shallow layers barely, the standard safe way to full-fine-tune a ViT. See
+# configs/abl_baseline_dv2ep104_fullft_llrd1.yaml for the literal llrd_decay=1.0 sibling,
+# to compare directly.
+#
+# batch_size 64->16, lr 2e-4->1e-4 (sqrt-scaled): full-FT of all 24 blocks needs to
+# retain activations for backprop across the whole encoder, not just the last 4 blocks --
+# doesn't fit at bs64 (same adjustment abl_ep20_fullft made, for the same reason). This
+# also happens to be phase2_baseline.yaml's own un-overridden bs16/lr1e-4 default, so no
+# new anchor pairing is being introduced.
+#
+# Everything else (single neck, heatmap128, canvas loss, dsnt0, sample_temp0) is
+# unchanged from abl_nossl/p2_baseline_nossl -- only SSL init, fine-tune depth, LLRD,
+# and batch/lr (for memory) differ.
+#
+# Usage (5 folds, override phase1_weights if the real ep104 checkpoint lives elsewhere):
+#   for f in 0 1 2 3 4; do
+#     CUDA_VISIBLE_DEVICES=$f python -m gubiometry phase2 \
+#       --config configs/abl_baseline_dv2ep104_fullft.yaml \
+#       -o data.fold=$f -o run_name=abl_baseline_dv2ep104_fullft_fold$f
+#   done
+run_name: abl_baseline_dv2ep104_fullft
+phase: phase2
+seed: 42
+phase1_weights: runs/phase1_dinov2/checkpoints/dinov2_adapted_ep104.pth   # override if the real path differs
+
+model:
+  backbone:
+    name: dinov2_vitl14_reg     # must match the Phase-1 checkpoint's backbone (register variant)
+    unfreeze_last_n_blocks: 24  # FULL fine-tune: all DINOv2-L blocks + final norm
+  neck:
+    branch_width: [128, 96, 64]
+    dropout_p: 0.3
+    input_mode: single
+    shared_head: false
+    decoder: hrnet
+  heatmap_size: 128
+
+data:
+  data_root: data/data/train_data
+  kfold_dir: splits/kfold_v1
+  fold: 0
+  batch_size: 16               # forced down from 64 so full fine-tune fits in 80GB
+  num_workers: 8
+  canvas: 518
+  sample_temp: 0.0
+
+optim:
+  lr: 1.0e-4                   # sqrt-scaled from 2e-4@bs64 -> 1e-4@bs16
+  encoder_lr_mult: 0.1
+  llrd_decay: 0.75             # safe full-FT value (see header); 1.0 sibling in the other file
+  amp_dtype: fp16
+  weight_decay: 1.0e-2
+  epochs: 150
+  warmup_epochs: 15
+  softargmax_temp: 10.0
+  loss_space: canvas
+  dsnt_lambda: 0.0
+  early_stop_patience: 40
+  select_metric: challenge_blend

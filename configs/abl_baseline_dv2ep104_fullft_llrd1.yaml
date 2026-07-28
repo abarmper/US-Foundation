@@ -1,0 +1,55 @@
+# Same as abl_baseline_dv2ep104_fullft.yaml (legacy Phase-2 recipe + NEW-SSL ep104 +
+# full backbone fine-tune, 5-fold), except llrd_decay=1.0 -- the LITERAL value
+# p2_baseline_nossl originally used (uniform LR across all 24 unfrozen blocks, no
+# layer-wise decay), for direct comparison against the 0.75 sibling.
+#
+# Risk: uniform LR across the whole backbone during full fine-tuning can destabilize or
+# forget shallow, low-level features -- this is the "faithful to the original recipe"
+# arm, not the "safe" one. See abl_baseline_dv2ep104_fullft.yaml for the full rationale;
+# this file only exists to answer "does the LLRD choice actually matter here."
+#
+# Usage (5 folds, override phase1_weights if the real ep104 checkpoint lives elsewhere):
+#   for f in 0 1 2 3 4; do
+#     CUDA_VISIBLE_DEVICES=$f python -m gubiometry phase2 \
+#       --config configs/abl_baseline_dv2ep104_fullft_llrd1.yaml \
+#       -o data.fold=$f -o run_name=abl_baseline_dv2ep104_fullft_llrd1_fold$f
+#   done
+run_name: abl_baseline_dv2ep104_fullft_llrd1
+phase: phase2
+seed: 42
+phase1_weights: runs/phase1_dinov2/checkpoints/dinov2_adapted_ep104.pth   # override if the real path differs
+
+model:
+  backbone:
+    name: dinov2_vitl14_reg     # must match the Phase-1 checkpoint's backbone (register variant)
+    unfreeze_last_n_blocks: 24  # FULL fine-tune: all DINOv2-L blocks + final norm
+  neck:
+    branch_width: [128, 96, 64]
+    dropout_p: 0.3
+    input_mode: single
+    shared_head: false
+    decoder: hrnet
+  heatmap_size: 128
+
+data:
+  data_root: data/data/train_data
+  kfold_dir: splits/kfold_v1
+  fold: 0
+  batch_size: 16               # forced down from 64 so full fine-tune fits in 80GB
+  num_workers: 8
+  canvas: 518
+  sample_temp: 0.0
+
+optim:
+  lr: 1.0e-4                   # sqrt-scaled from 2e-4@bs64 -> 1e-4@bs16
+  encoder_lr_mult: 0.1
+  llrd_decay: 1.0               # literal match to p2_baseline_nossl -- no layer-wise decay
+  amp_dtype: fp16
+  weight_decay: 1.0e-2
+  epochs: 150
+  warmup_epochs: 15
+  softargmax_temp: 10.0
+  loss_space: canvas
+  dsnt_lambda: 0.0
+  early_stop_patience: 40
+  select_metric: challenge_blend
