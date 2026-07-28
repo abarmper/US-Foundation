@@ -1,6 +1,11 @@
 # Phase-2 Experiment Results
 
-GU/FU Biometry — Phase-2 landmark runs. Metric: **`challenge_blend`** (0.5·MRE + 0.5·measurement-MAE proxy, **lower = better**) and **MRE** (mean radial error, original px). Best checkpoint selected on `challenge_blend`. Snapshot: 2026-07-20.
+GU/FU Biometry — Phase-2 landmark runs. Metric: **`challenge_blend`** (0.5·MRE + 0.5·measurement-MAE proxy, **lower = better**) and **MRE** (mean radial error, original px). Best checkpoint selected on `challenge_blend`. Snapshot: 2026-07-28.
+
+> ⚠️ **Read §5 + findings #16–18 first.** Internal fold-0 `challenge_blend` is both **leaky**
+> (video-frame overlap in cardiac tasks) and a **proxy** (unofficial normalizer), and it does **not**
+> transfer to the Codabench leaderboard — the best *external* model is the plain no-SSL HRNet. Treat
+> all §1–§3 rankings as internal-only until splits are loop-level and results are leaderboard-checked.
 
 ## Legend
 
@@ -27,6 +32,7 @@ Sorted by `challenge_blend`. All fold 0, unfreeze 4, 150 ep.
 |---|---|---|---|---|---|---|---|---|
 | `abl_ep20_simplehead_ml_dv2ep20` | **NEW** ep20 | upgraded | multilevel-**concat** | **simple** | 0.5 | **0.0696** | **25.98** | ✅ done — **best blend** |
 | `abl_ep20_simplehead_ml_dv2ep104` | **NEW** ep104 (224 bulk + 518 tail) | upgraded | multilevel-**concat** | **simple** | 0.5 | 0.0717 | 24.61 | ✅ done — best@ep68, early-stopped@ep108 — **best MRE**, 2nd-best blend |
+| `abl_ep20_simplehead_ml_dv2tailep60ep5` | **NEW** ep60+5-ep 518 tail (cheap) | upgraded | multilevel-**concat** | **simple** | 0.5 | 0.0722 | 24.86 | ✅ done — ties `ep104` at ~40 fewer Phase-1 bulk epochs |
 | `abl_ep20_simplehead_dv2ep20` | **NEW** ep20 | upgraded | single | **simple** | 0.5 | 0.0721 | 27.69 | ✅ done (early-stop ep62; best@23) |
 | `abl_nossl_fold0` | none | simple | single | hrnet | 0.0 | 0.0740 | 28.98 | ✅ done |
 | `phase2_simple_dv2ep20` | **NEW** ep20 | simple | single | hrnet | 0.0 | 0.0791 | 28.85 | ✅ done |
@@ -102,12 +108,51 @@ Upgraded recipe, unfreeze 4, 150 ep, old `multicrop` ep20 encoder.
 
 ---
 
+## 3b. 5-fold CV — champion recipe, NEW ep104 SSL (in progress)
+
+Champion recipe (multilevel-concat simple decoder, unfreeze 4, 150 ep), NEW `ep104` encoder.
+This is the "confirm across folds before ensembling/submitting" sweep.
+
+| Fold | Run | blend ↓ | MRE | status |
+|---|---|---|---|---|
+| 0 | `abl_ep20_simplehead_ml_dv2ep104` | 0.0717 | 24.61 | ✅ done |
+| 1 | `abl_ep20_simplehead_ml_dv2ep104_fold1` | 0.0846 | 23.64 | ✅ done |
+| 2 | `abl_ep20_simplehead_ml_dv2ep104_fold2` | 0.0674 | 23.58 | 🔄 running (~ep90/150) |
+| 3 | `abl_ep20_simplehead_ml_dv2ep104_fold3` | — | — | queued |
+| 4 | `abl_ep20_simplehead_ml_dv2ep104_fold4` | — | — | queued |
+
+Spread so far 0.067–0.085 (±13%) — the fold-to-fold noise that makes any single-fold ranking
+unreliable. Trust the 5-fold **mean**, not fold 0.
+
+---
+
 ## 4. Reference (NOT fold-0 comparable)
 
 | Run | note | blend | MRE |
 |---|---|---|---|
 | `p2_baseline_nossl` | **holdout split** (not fold 0; 81% of its val is in fold-0 train) — do not rank against §1 | 0.0770 | 23.85 |
 | `smoke_p2` | CPU smoke test (dummy) — ignore | 0.2656 | 289.81 |
+
+---
+
+## 5. External (Codabench) submissions & the internal↔external mismatch ⚠️
+
+Submissions built on the real challenge val set (`data/data/val_data`, unlabeled), single-model +
+multi-scale/intensity TTA, via `gubiometry predict`:
+
+| Zip | model | note |
+|---|---|---|
+| `regression_predictions.zip` (Jul 13) | old **no-SSL HRNet** | **best external score so far** |
+| `submission_fold0_intermediate.zip` (Jul 16) | fold-0 intermediate | — |
+| `submission_dv2ep104.zip` (Jul 27) | `abl_ep20_simplehead_ml_dv2ep104` | worse externally than the no-SSL zip |
+| `submission_dv2ep20.zip` (Jul 27) | `abl_ep20_simplehead_ml_dv2ep20` | worse than the ep104 zip externally |
+
+**The internal ranking does NOT transfer to Codabench.** Internally (fold 0) the order is
+SSL-ep20 > SSL-ep104 > no-SSL; externally it is roughly **no-SSL > SSL-ep104 > SSL-ep20** — both
+optimism *and* a reordering. Diagnosed causes (see findings #16–18): video-frame **leakage** in the
+splits, a **proxy** selection metric, and SSL **domain over-specialization**. Submission format is
+clean (identical schema across all four zips), so this is a generalization/objective problem, not a
+pipeline bug.
 
 ---
 
@@ -160,6 +205,25 @@ Upgraded recipe, unfreeze 4, 150 ep, old `multicrop` ep20 encoder.
     as the downsampled run: frozen probe ep30 (0.0934) is worse than ep20 (0.0901) — more bulk-only
     epochs alone don't help regardless of resolution, and this line remains behind the
     downsampled-bulk-then-tail design at every matched checkpoint so far.
+16. **⚠️ Internal validation is LEAKY (biggest external-transfer problem).** Splits are per-image
+    `StratifiedKFold` (task-stratified only, `data/splits.py`) but the cardiac data is video frames
+    (`DCM_IM_0008_frame061.png`): A4C/IVC/PLAX/PSAX have 1.8–2.9 frames per loop. Measured in fold 0:
+    **45% of A4C and 24% of PLAX val images share a loop with a training frame.** Because the metric
+    is macro-averaged (equal weight per task), those ~2 tasks are internally inflated. An SSL encoder
+    pretrained on the internal set memorizes loop/patient appearance → gains more from the leak
+    internally, over-specializes → loses externally. **Fix: loop-level `GroupKFold`.** (Literature:
+    image-level vs case-level splits are the canonical cause of over-optimistic medical-imaging val.)
+17. **⚠️ `challenge_blend` is a PROXY, not the official metric.** It normalizes each task by a
+    home-made scale (median image diagonal for MRE, median |gt-measurement| for the measurement half);
+    `metrics.py` states the official normalizer (clinical-tolerance/IQR) is unpublished. So per-task
+    weighting differs from Codabench — a model can win our blend and lose officially with zero leakage.
+    `average_mre` (raw px) IS reproduced exactly and is more trustworthy than the blend for ranking.
+18. **⚠️ SSL wins internally / loses externally is consistent across three independent axes:** leakage
+    (#16), proxy metric (#17), and domain over-specialization (finding #3 already showed full-FT erases
+    most of SSL's edge). The best *external* model remains the plain **no-SSL HRNet** with the legacy
+    loss (canvas L1, `dsnt=0`, `measurement_lambda=0` — i.e. only the MRE half of the metric is
+    optimized). Do not rank encoders/recipes on fold-0 blend until splits are loop-level AND validated
+    on the leaderboard.
 
 ## Recommended recipe so far (fold 0)
 **NEW-SSL encoder + multilevel `input_mode` + `decoder: simple` (concat) + full fine-tune (unfreeze 4)
@@ -170,24 +234,20 @@ the submission should optimize; `ep104` is the more expensive checkpoint to prod
 epochs) for a blend result that's currently *slightly worse*, so `ep20` remains the practical default
 until this is confirmed across folds.
 
-## Currently running / idle
-- `phase1_dinov2_fullres` (518-throughout control) was silently evicted mid-epoch-31 (no traceback,
-  the usual shared-box pattern) and is **not currently running**; last complete checkpoint is
-  `dinov2_adapted_ep30.pth`. Resume with `-o
-  resume=runs/phase1_dinov2_fullres/checkpoints/latest_checkpoint.pth` on a free GPU if this control
-  run should keep going.
-- 🔄 `abl_ep20_simplehead_ml_dv2tailep60ep5` (champion recipe, full fine-tune of the cheap
-  ep60+5-epoch-tail encoder) running on GPU 0 — tests whether the ~40-bulk-epoch-cheaper checkpoint
-  (frozen probe 0.0748, tied with `ep104`'s 0.0747) also holds up under full fine-tune.
-- 🔄 `predict_challenge_dv2ep104` (single-model, multi-scale+intensity TTA, `abl_ep20_simplehead_ml_dv2ep104`
-  checkpoint) running on GPU 4 against the real challenge val set (`data/data/val_data`) ->
-  `submission_dv2ep104.zip` — the first actual Codabench-format submission produced this project.
+## Currently running / idle (as of 2026-07-28)
+- 🔄 `abl_ep20_simplehead_ml_dv2ep104_fold{1..4}` sweep (§3b) — fold1 done, fold2 ~ep90/150, fold3/4
+  queued. GPU 2.
+- ✅ `abl_ep20_simplehead_ml_dv2tailep60ep5` finished — 0.0722 / 24.86 (now in §1).
+- ✅ `predict_challenge_dv2ep104` / `_dv2ep20` finished — zips written (§5).
+- `phase1_dinov2_fullres` (518-throughout control) **not running** (evicted mid-ep31); last checkpoint
+  `dinov2_adapted_ep30.pth`. Resume with `-o resume=…/checkpoints/latest_checkpoint.pth` if still wanted.
 
 ## Untested / next
-- **Confirm across folds 1–4** with the champion recipe on both `ep20` and `ep104` (needed before any
-  ensemble/submission, and would settle which encoder is actually better).
-- Resume/continue `phase1_dinov2_fullres` if the full-res control is still wanted — currently stalled
-  at ep30 (idle GPUs available).
-- **Later encoder checkpoint** (ep60 exists, SSL still improving) with the champion recipe — likely more headroom.
-- Intermediate unfreeze depth (6/8), `coord_loss=wing`, `measurement_lambda>0`, with NEW SSL.
-- NEW-**fullres** encoder (`phase1_dinov2_fullres`, 518-throughout) — Phase-1 still training; no Phase-2 uses it yet.
+- **Fix the splits first: loop-level `GroupKFold`** (finding #16) — prerequisite for any trustworthy
+  internal ranking; then re-score existing models on leak-free folds.
+- **Loss on the no-SSL HRNet base** (external winner): the measurement half of the metric gets zero
+  gradient today → try `measurement_lambda>0` (primary), `coord_loss=wing` (MRE half), `loss_space=original`.
+  Validate on group splits + leaderboard, NOT fold-0 blend.
+- **Ensemble across leak-free folds + TTA** for the real submission (not single fold-0).
+- Finish the ep104 5-fold sweep (§3b) and report the mean.
+- NEW-**fullres** encoder — Phase-1 stalled at ep30; no Phase-2 uses it yet.
