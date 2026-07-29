@@ -117,12 +117,16 @@ This is the "confirm across folds before ensembling/submitting" sweep.
 |---|---|---|---|---|
 | 0 | `abl_ep20_simplehead_ml_dv2ep104` | 0.0717 | 24.61 | ✅ done |
 | 1 | `abl_ep20_simplehead_ml_dv2ep104_fold1` | 0.0846 | 23.64 | ✅ done |
-| 2 | `abl_ep20_simplehead_ml_dv2ep104_fold2` | 0.0674 | 23.58 | 🔄 running (~ep90/150) |
+| 2 | `abl_ep20_simplehead_ml_dv2ep104_fold2` | 0.0665 (so far) | 23.45 | 🔄 running — epoch 124/150, still setting new bests, train_loss not plateaued (may not fully converge by the 150-ep cap) |
 | 3 | `abl_ep20_simplehead_ml_dv2ep104_fold3` | — | — | queued |
 | 4 | `abl_ep20_simplehead_ml_dv2ep104_fold4` | — | — | queued |
 
 Spread so far 0.067–0.085 (±13%) — the fold-to-fold noise that makes any single-fold ranking
 unreliable. Trust the 5-fold **mean**, not fold 0.
+
+Fold 2, still running, is already the best single-fold result in the project (0.0665 <
+the fold-0 champion's 0.0696) — same leaky-split caveat applies (finding #18): comparable
+internally, not proof of anything vs. Codabench.
 
 ---
 
