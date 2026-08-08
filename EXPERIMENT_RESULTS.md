@@ -64,6 +64,7 @@ All fold 0, unfreeze **0**, 25 ep, upgraded-recipe knobs (multilevel/heatmap148/
 | `probe_dv2_ep60` | **NEW** ep60, 224px (bulk only) | 0.0836 | 26.43 |
 | `probe_dv2_ep10` | **NEW** ep10, 224px (bulk only) | 0.0872 | 26.88 |
 | `probe_nossl` | none | 0.0890 | 31.27 |
+| `probe_dv2fullres_ep10` | **NEW** ep10, 518px (full-res, no downsampling) | ⏳ queued | ⏳ queued |
 | `probe_dv2fullres_ep20` | **NEW** ep20, 518px (full-res, no downsampling) | 0.0901 | 25.96 |
 | `probe_legacy_ep20` | old ep20 | 0.0965 | 33.11 |
 | `probe_dv2_ep100` | **NEW ep100 — end of 224 bulk, NO tail** | 0.0974 | 25.95 |

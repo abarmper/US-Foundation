@@ -1,0 +1,38 @@
+# Frozen-probe fullres-control duration point. Fills the missing ep10 data point for
+# the 518px-throughout control (phase1_dinov2_fullres) -- the run only reached ep20/ep30
+# before being evicted (EXPERIMENT_RESULTS.md), so ep10 was never probed even though the
+# checkpoint exists on disk. Identical protocol to probe_dv2fullres_ep20/ep30: fold 0,
+# unfreeze 0, 25 ep, upgraded-recipe knobs (multilevel neck, heatmap 148), register
+# backbone (matches every other dv2 probe -- NOT the register ablation, that's the
+# separate probe_noreg_nossl.yaml).
+#
+# Usage:
+#   python -m gubiometry phase2 --config configs/probe_dv2fullres_ep10.yaml
+run_name: probe_dv2fullres_ep10
+phase: phase2
+seed: 42
+phase1_weights: runs/phase1_dinov2_fullres/checkpoints/dinov2_adapted_ep10.pth
+
+model:
+  backbone:
+    name: dinov2_vitl14_reg
+    unfreeze_last_n_blocks: 0   # FROZEN encoder -> probes representation quality only
+  neck:
+    input_mode: multilevel
+  heatmap_size: 148
+
+data:
+  data_root: data/data/train_data
+  kfold_dir: splits/kfold_v1
+  fold: 0
+  batch_size: 64
+  num_workers: 8
+  canvas: 518
+
+optim:
+  lr: 2.0e-4
+  epochs: 25
+  warmup_epochs: 3
+  early_stop_patience: 10
+  amp_dtype: bf16
+  select_metric: challenge_blend
