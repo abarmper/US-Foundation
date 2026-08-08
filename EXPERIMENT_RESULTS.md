@@ -175,6 +175,51 @@ pipeline bug.
 
 ---
 
+## 6. Compute cost / throughput / memory (Reviewer 3)
+
+Not logged anywhere before this — Reviewer 3 (KKV9) flagged that params/FLOPs/memory/throughput
+were never reported. Measured with `scripts/profile_compute.py` on the real model (not the CPU
+dummy backbone), config `configs/phase2_upgraded.yaml` (register backbone, multilevel neck, HRNet
+decoder, heatmap 148 — the paper's actual described architecture), single A100-80GB, task head
+`AOP`, canvas 518. Script builds the model from the YAML directly, no dataset needed.
+
+**Parameters:**
+
+| | Count |
+|---|---|
+| Total | 312.20M |
+| Trainable (unfreeze-4 + neck + heads) | 58.22M |
+| Frozen | 253.98M |
+| Encoder (total / trainable) | 304.37M / 50.40M |
+| Neck | 5.83M |
+| Heads (all 9 / each) | 2.00M / ~222.80K |
+
+**FLOPs:** 1051.80 GFLOPs, single forward pass, batch=1, one task head (`torch.utils.flop_counter`).
+
+**Throughput & peak GPU memory:**
+
+| Mode | Precision | Batch | Throughput | Peak memory |
+|---|---|---|---|---|
+| Inference | fp32 | 1 | 14.3 img/s | 1.25 GB |
+| Inference | fp32 | 64 | 17.8 img/s | 6.06 GB |
+| Inference | bf16 autocast | 64 | **127.3 img/s** | 5.65 GB |
+| Training (fwd+bwd+AdamW step) | bf16 | 64 | 84.4 img/s | 29.24 GB |
+
+**Finding: `predict.py`/`evaluate.py` never use autocast — a ~7× inference speedup is sitting
+unused.** fp32 inference (17.8 img/s @ bs64) looks *slower* than bf16 training (84.4 img/s) at
+first glance, which reads like a bug until you notice they're different precisions — bf16
+inference at the same batch size is 127.3 img/s, ~7.2× the fp32 number. Training is (correctly)
+slower than bf16 inference because it does forward+backward+optimizer-step, not forward alone.
+**Actionable:** switching `predict.py`/`evaluate.py` to `torch.autocast(..., dtype=bfloat16)`
+would be a free ~7× inference throughput win with lower memory too (5.65 GB vs 6.06 GB) — worth
+doing regardless of the paper, and worth a sentence in the compute-cost discussion.
+
+Training's 29.24 GB peak (bs64, bf16, unfreeze-4) matches the ballpark already implied by
+`phase2_upgraded.yaml`'s own comment ("A100-80GB has headroom (baseline used ~29 GB)") — consistent
+with prior manual observation, now measured precisely and reproducibly.
+
+---
+
 ## Key findings
 
 1. **The old SSL hurts.** Every legacy-`multicrop` full-FT run loses to no-SSL (`abl_nossl` 0.0740). The frozen probe shows why: the legacy encoder is *worse than off-the-shelf* (probe legacy ep10 0.145 / ep20 0.097, both above no-SSL 0.089) — the weak head degraded DINOv2's features.
