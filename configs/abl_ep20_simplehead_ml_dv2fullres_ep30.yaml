@@ -1,0 +1,58 @@
+# Fills the last untested gap flagged in EXPERIMENT_RESULTS.md ("Untested / next"):
+# "NEW-fullres encoder -- Phase-1 stalled at ep30; no Phase-2 uses it yet." This is the
+# champion recipe (abl_ep20_simplehead_ml.yaml: multilevel-concat simple decoder, unfreeze
+# 4, upgraded knobs) pointed at the 518px-full-resolution-throughout Phase-1 encoder
+# instead of the 224-bulk(+tail) one -- the first FULL FINE-TUNE run on that encoder;
+# only frozen-probe results exist for it so far (probe_dv2fullres_ep10/20/30,
+# EXPERIMENT_RESULTS.md Section 2).
+#
+# Frozen-probe evidence suggests this will likely underperform the 224-bulk+tail
+# champions (ep30 fullres was the WORST of the three fullres probe points: 0.0934/26.92,
+# vs. the bulk+tail champion's 0.0696-0.0717 range) -- but full fine-tuning has
+# repeatedly compressed frozen-probe gaps elsewhere in this project (finding #13), so
+# this is worth actually measuring rather than assuming from the probe alone.
+#
+# Usage:
+#   python -m gubiometry phase2 --config configs/abl_ep20_simplehead_ml_dv2fullres_ep30.yaml
+run_name: abl_ep20_simplehead_ml_dv2fullres_ep30
+phase: phase2
+seed: 42
+phase1_weights: runs/phase1_dinov2_fullres/checkpoints/dinov2_adapted_ep30.pth
+
+model:
+  backbone:
+    name: dinov2_vitl14_reg
+    unfreeze_last_n_blocks: 4
+  neck:
+    branch_width: [128, 96, 64]   # ignored by the simple decoder
+    dropout_p: 0.3
+    input_mode: multilevel        # concat the feature_layers depths (channel-wise)
+    feature_layers: [5, 11, 17, 23]
+    shared_head: false
+    decoder: simple               # ViTPose-style deconv on the concatenated depths
+  heatmap_size: 148
+
+data:
+  data_root: data/data/train_data
+  kfold_dir: splits/kfold_v1
+  fold: 0
+  batch_size: 64
+  num_workers: 8
+  canvas: 518
+  sample_temp: 0.5
+
+optim:
+  lr: 2.0e-4
+  encoder_lr_mult: 0.1
+  llrd_decay: 0.75
+  amp_dtype: bf16
+  weight_decay: 1.0e-2
+  epochs: 150
+  warmup_epochs: 15
+  softargmax_temp: 10.0
+  loss_space: original
+  dsnt_lambda: 0.1
+  dsnt_type: js
+  dsnt_sigma: 1.0
+  early_stop_patience: 40
+  select_metric: challenge_blend

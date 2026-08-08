@@ -43,6 +43,7 @@ Sorted by `challenge_blend`. All fold 0, unfreeze 4, 150 ep.
 | `phase2_baseline_fold0_ssl10` | old ep10 | simple | single | hrnet | 0.0 | 0.1107 | 40.32 | ✅ done |
 | `abl_ep20_sampletemp0` | old ep20 | upgraded | multilevel | hrnet | **0.0** | 0.1135 | 30.05 | ✅ done |
 | `abl_ep20_simplehead` | old ep20 | upgraded | single | **simple** | 0.5 | 0.1214 | 47.54 | ✅ done |
+| `abl_ep20_simplehead_ml_dv2fullres_ep30` | **NEW** fullres ep30 (518px throughout) | upgraded | multilevel-**concat** | **simple** | 0.5 | ⏳ queued | ⏳ queued | ⏳ queued — champion recipe's first full-FT run on the fullres encoder |
 
 Note: `abl_ep20_simplehead_dv2ep20`'s best blend (0.0721) was set at ep23 and selected on
 `challenge_blend`; its **MRE kept improving afterward** (27.69 → 26.78 by ep62) while the AvgMAE
@@ -347,6 +348,8 @@ until this is confirmed across folds.
   early-stopped). Fills the missing ep10 point for the fullres-control duration figure
   (docs/MWM_54 reviewer-response draft): ep10 (0.0929) sits between ep20 (0.0901, the local
   optimum) and ep30 (0.0934), consistent with the non-monotonic bulk pattern noted in §2.
+- 🔄 **(2026-08-08)** `abl_ep20_simplehead_ml_dv2fullres_ep30` (§1) — champion recipe's
+  first full fine-tune on the fullres-ep30 encoder, started on the abar-side session.
 
 ## Untested / next
 - **Fix the splits first: loop-level `GroupKFold`** (finding #16) — prerequisite for any trustworthy
@@ -355,4 +358,3 @@ until this is confirmed across folds.
   gradient today → try `measurement_lambda>0` (primary), `coord_loss=wing` (MRE half), `loss_space=original`.
   Validate on group splits + leaderboard, NOT fold-0 blend.
 - **Ensemble across leak-free folds + TTA** for the real submission (not single fold-0).
-- NEW-**fullres** encoder — Phase-1 stalled at ep30; no Phase-2 uses it yet.
