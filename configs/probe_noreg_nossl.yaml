@@ -1,0 +1,38 @@
+# Frozen-probe register-backbone ablation control. Identical to configs/probe_phase1.yaml
+# (fold 0, unfreeze 0, 25 ep, upgraded-recipe knobs: multilevel neck, heatmap 148) but on
+# the NON-register DINOv2-L/14 backbone, off-the-shelf (no Phase-1 SSL). Pairs directly
+# against `probe_nossl` (same recipe/split, register backbone dinov2_vitl14_reg,
+# EXPERIMENT_RESULTS.md Section 2: blend 0.0890 / MRE 31.27) to isolate the METHOD_CHANGES.md
+# A5 register-token design choice on equal footing -- same split, same recipe, no SSL
+# confound, and cheap (frozen encoder, 25 epochs, no Phase-1 re-run needed).
+#
+# Usage:
+#   python -m gubiometry phase2 --config configs/probe_noreg_nossl.yaml
+run_name: probe_noreg_nossl
+phase: phase2
+seed: 42
+phase1_weights: ""              # off-the-shelf DINOv2 (no Phase-1 SSL), matches probe_nossl
+
+model:
+  backbone:
+    name: dinov2_vitl14         # NON-register variant -- the only knob that differs from probe_nossl
+    unfreeze_last_n_blocks: 0   # FROZEN encoder -> probes representation quality only
+  neck:
+    input_mode: multilevel
+  heatmap_size: 148
+
+data:
+  data_root: data/data/train_data
+  kfold_dir: splits/kfold_v1
+  fold: 0
+  batch_size: 64
+  num_workers: 8
+  canvas: 518
+
+optim:
+  lr: 2.0e-4
+  epochs: 25
+  warmup_epochs: 3
+  early_stop_patience: 10
+  amp_dtype: bf16
+  select_metric: challenge_blend
