@@ -64,7 +64,7 @@ All fold 0, unfreeze **0**, 25 ep, upgraded-recipe knobs (multilevel/heatmap148/
 | `probe_dv2_ep60` | **NEW** ep60, 224px (bulk only) | 0.0836 | 26.43 |
 | `probe_dv2_ep10` | **NEW** ep10, 224px (bulk only) | 0.0872 | 26.88 |
 | `probe_nossl` | none | 0.0890 | 31.27 |
-| `probe_dv2fullres_ep10` | **NEW** ep10, 518px (full-res, no downsampling) | ⏳ queued | ⏳ queued |
+| `probe_dv2fullres_ep10` | **NEW** ep10, 518px (full-res, no downsampling) | 🔄 running | 🔄 running |
 | `probe_dv2fullres_ep20` | **NEW** ep20, 518px (full-res, no downsampling) | 0.0901 | 25.96 |
 | `probe_legacy_ep20` | old ep20 | 0.0965 | 33.11 |
 | `probe_dv2_ep100` | **NEW ep100 — end of 224 bulk, NO tail** | 0.0974 | 25.95 |
@@ -253,13 +253,15 @@ the submission should optimize; `ep104` is the more expensive checkpoint to prod
 epochs) for a blend result that's currently *slightly worse*, so `ep20` remains the practical default
 until this is confirmed across folds.
 
-## Currently running / idle (as of 2026-07-28)
+## Currently running / idle (as of 2026-07-28, except where noted)
 - 🔄 `abl_ep20_simplehead_ml_dv2ep104_fold{1..4}` sweep (§3b) — fold1 done, fold2 ~ep90/150, fold3/4
   queued. GPU 2.
 - ✅ `abl_ep20_simplehead_ml_dv2tailep60ep5` finished — 0.0722 / 24.86 (now in §1).
 - ✅ `predict_challenge_dv2ep104` / `_dv2ep20` finished — zips written (§5).
-- `phase1_dinov2_fullres` (518-throughout control) **not running** (evicted mid-ep31); last checkpoint
-  `dinov2_adapted_ep30.pth`. Resume with `-o resume=…/checkpoints/latest_checkpoint.pth` if still wanted.
+- `phase1_dinov2_fullres` (518-throughout control) **not running** (evicted mid-ep31, capped there —
+  not being resumed); last checkpoint `dinov2_adapted_ep30.pth`.
+- 🔄 **(2026-08-08)** `probe_dv2fullres_ep10` (§2) — frozen probe backfilling the missing ep10 point
+  for the fullres-control duration figure (docs/MWM_54 reviewer-response draft).
 
 ## Untested / next
 - **Fix the splits first: loop-level `GroupKFold`** (finding #16) — prerequisite for any trustworthy
