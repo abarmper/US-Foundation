@@ -123,7 +123,7 @@ Upgraded recipe, unfreeze 4, 150 ep, old `multicrop` ep20 encoder.
 
 ---
 
-## 3b. 5-fold CV — champion recipe, NEW ep104 SSL (in progress)
+## 3b. 5-fold CV — champion recipe, NEW ep104 SSL (complete)
 
 Champion recipe (multilevel-concat simple decoder, unfreeze 4, 150 ep), NEW `ep104` encoder.
 This is the "confirm across folds before ensembling/submitting" sweep.
@@ -132,12 +132,17 @@ This is the "confirm across folds before ensembling/submitting" sweep.
 |---|---|---|---|---|
 | 0 | `abl_ep20_simplehead_ml_dv2ep104` | 0.0717 | 24.61 | ✅ done |
 | 1 | `abl_ep20_simplehead_ml_dv2ep104_fold1` | 0.0846 | 23.64 | ✅ done |
-| 2 | `abl_ep20_simplehead_ml_dv2ep104_fold2` | 0.0665 (so far) | 23.45 | 🔄 running — epoch 124/150, still setting new bests, train_loss not plateaued (may not fully converge by the 150-ep cap) |
-| 3 | `abl_ep20_simplehead_ml_dv2ep104_fold3` | — | — | queued |
-| 4 | `abl_ep20_simplehead_ml_dv2ep104_fold4` | — | — | queued |
+| 2 | `abl_ep20_simplehead_ml_dv2ep104_fold2` | 0.0658 | 23.54 | ✅ done (finished 2026-07-28, full 150 ep) |
+| 3 | `abl_ep20_simplehead_ml_dv2ep104_fold3` | 0.0736 | 26.40 | ✅ done (early-stopped ep45, patience=40) |
+| 4 | `abl_ep20_simplehead_ml_dv2ep104_fold4` | 0.0745 | 27.99 | ✅ done (finished 2026-07-29, full 150 ep) |
+| **mean** | | **≈0.0740** | **≈25.24** | all 5 folds complete |
 
-Spread so far 0.067–0.085 (±13%) — the fold-to-fold noise that makes any single-fold ranking
-unreliable. Trust the 5-fold **mean**, not fold 0.
+Spread 0.0658–0.0846 (±13%) — the fold-to-fold noise that makes any single-fold ranking
+unreliable; trust the 5-fold **mean**, not fold 0. **Fold 3 is a real training-dynamics
+outlier, not just result variance**: it early-stopped at epoch 45 (patience 40, i.e. no
+improvement roughly from ep5 onward) while folds 0/1/2/4 all ran close to or the full 150
+epochs — worth a footnote if this table goes into the paper/report, since fold 3's number
+came from a much shorter effective training run than the others.
 
 Fold 2, still running, is already the best single-fold result in the project (0.0665 <
 the fold-0 champion's 0.0696) — same leaky-split caveat applies (finding #18): comparable
@@ -332,8 +337,8 @@ epochs) for a blend result that's currently *slightly worse*, so `ep20` remains 
 until this is confirmed across folds.
 
 ## Currently running / idle (as of 2026-07-28, except where noted)
-- 🔄 `abl_ep20_simplehead_ml_dv2ep104_fold{1..4}` sweep (§3b) — fold1 done, fold2 ~ep90/150, fold3/4
-  queued. GPU 2.
+- ✅ **(2026-07-29)** `abl_ep20_simplehead_ml_dv2ep104_fold{1..4}` sweep (§3b) — all 5 folds
+  complete, mean blend ≈0.0740 / MRE ≈25.24. Fold 3 early-stopped at ep45 (outlier).
 - ✅ `abl_ep20_simplehead_ml_dv2tailep60ep5` finished — 0.0722 / 24.86 (now in §1).
 - ✅ `predict_challenge_dv2ep104` / `_dv2ep20` finished — zips written (§5).
 - `phase1_dinov2_fullres` (518-throughout control) **not running** (evicted mid-ep31, capped there —
@@ -350,5 +355,4 @@ until this is confirmed across folds.
   gradient today → try `measurement_lambda>0` (primary), `coord_loss=wing` (MRE half), `loss_space=original`.
   Validate on group splits + leaderboard, NOT fold-0 blend.
 - **Ensemble across leak-free folds + TTA** for the real submission (not single fold-0).
-- Finish the ep104 5-fold sweep (§3b) and report the mean.
 - NEW-**fullres** encoder — Phase-1 stalled at ep30; no Phase-2 uses it yet.
