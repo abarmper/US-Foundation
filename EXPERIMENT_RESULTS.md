@@ -64,7 +64,7 @@ All fold 0, unfreeze **0**, 25 ep, upgraded-recipe knobs (multilevel/heatmap148/
 | `probe_dv2_ep60` | **NEW** ep60, 224px (bulk only) | 0.0836 | 26.43 |
 | `probe_dv2_ep10` | **NEW** ep10, 224px (bulk only) | 0.0872 | 26.88 |
 | `probe_nossl` | none | 0.0890 | 31.27 |
-| `probe_dv2fullres_ep10` | **NEW** ep10, 518px (full-res, no downsampling) | 🔄 running | 🔄 running |
+| `probe_dv2fullres_ep10` | **NEW** ep10, 518px (full-res, no downsampling) | 0.0929 | 25.79 |
 | `probe_dv2fullres_ep20` | **NEW** ep20, 518px (full-res, no downsampling) | 0.0901 | 25.96 |
 | `probe_legacy_ep20` | old ep20 | 0.0965 | 33.11 |
 | `probe_dv2_ep100` | **NEW ep100 — end of 224 bulk, NO tail** | 0.0974 | 25.95 |
@@ -305,8 +305,10 @@ until this is confirmed across folds.
 - ✅ `predict_challenge_dv2ep104` / `_dv2ep20` finished — zips written (§5).
 - `phase1_dinov2_fullres` (518-throughout control) **not running** (evicted mid-ep31, capped there —
   not being resumed); last checkpoint `dinov2_adapted_ep30.pth`.
-- 🔄 **(2026-08-08)** `probe_dv2fullres_ep10` (§2) — frozen probe backfilling the missing ep10 point
-  for the fullres-control duration figure (docs/MWM_54 reviewer-response draft).
+- ✅ **(2026-08-08)** `probe_dv2fullres_ep10` (§2) finished — 0.0929 / 25.79 (best epoch 14,
+  early-stopped). Fills the missing ep10 point for the fullres-control duration figure
+  (docs/MWM_54 reviewer-response draft): ep10 (0.0929) sits between ep20 (0.0901, the local
+  optimum) and ep30 (0.0934), consistent with the non-monotonic bulk pattern noted in §2.
 
 ## Untested / next
 - **Fix the splits first: loop-level `GroupKFold`** (finding #16) — prerequisite for any trustworthy
