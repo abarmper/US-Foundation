@@ -70,7 +70,7 @@ All fold 0, unfreeze **0**, 25 ep, upgraded-recipe knobs (multilevel/heatmap148/
 | `probe_dv2_ep100` | **NEW ep100 — end of 224 bulk, NO tail** | 0.0974 | 25.95 |
 | `probe_dv2fullres_ep30` | **NEW** ep30, 518px (full-res, no downsampling) | 0.0934 | 26.92 |
 | `probe_legacy_ep10` | old ep10 | 0.1453 | 47.08 |
-| `probe_noreg_nossl` | none, **non-register** backbone (`dinov2_vitl14`) | ⏳ queued | ⏳ queued |
+| `probe_noreg_nossl` | none, **non-register** backbone (`dinov2_vitl14`) | 0.0976 | 29.34 |
 
 **Bulk-only quality declines monotonically with more 224 training:** ep20 0.0782 < ep60 0.0836 <
 ep100 0.0974 — earlier bulk stop = better representation. **But a short 518 tail rescues an early
@@ -93,7 +93,7 @@ only the resolution-matched tail does.
 ep20 (0.0901) — consistent with finding #12 (more bulk-only epochs alone don't help, downsampled or
 not) and still well behind the downsampled-bulk-then-tail design at any matched checkpoint.
 
-**Register-backbone ablation (queued, `configs/probe_noreg_nossl.yaml`):** the register backbone
+**Register-backbone ablation (`configs/probe_noreg_nossl.yaml`):** the register backbone
 (`dinov2_vitl14_reg`, METHOD_CHANGES.md A5) was adopted on literature rationale (Darcet et al.,
 *Vision Transformers Need Registers*, ICLR 2024), not an in-project ablation — the only non-register
 run anywhere in the project (`p2_baseline_nossl`) differs in split, batch size, LR, and epoch budget,
@@ -101,6 +101,10 @@ so it cannot isolate the backbone choice (see that run's own config comment). `p
 is `probe_nossl` with only `model.backbone.name` swapped to `dinov2_vitl14` — same fold-0 split,
 same upgraded-recipe knobs, no SSL, frozen encoder (25 ep, cheap, no Phase-1 re-run needed) — a
 clean, matched pair against `probe_nossl` (0.0890 / 31.27) to actually isolate the register effect.
+Result: `probe_noreg_nossl` reaches 0.0976 / 29.34px (best at epoch 7, early-stopped) — *worse* than
+the register-backbone `probe_nossl` (0.0890 / 31.27) on blend, but the non-register run posts a
+noticeably better MRE (29.34px vs 31.27px), so on this matched-pair evidence the register backbone
+is not a clean win for this frozen-probe setting; the two metrics disagree on which is "better," consistent with finding #17 (challenge_blend and MRE don't always rank models the same way).
 
 ---
 
