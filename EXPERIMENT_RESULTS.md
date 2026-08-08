@@ -218,6 +218,39 @@ Training's 29.24 GB peak (bs64, bf16, unfreeze-4) matches the ballpark already i
 `phase2_upgraded.yaml`'s own comment ("A100-80GB has headroom (baseline used ~29 GB)") — consistent
 with prior manual observation, now measured precisely and reproducibly.
 
+### Phase 1 (SSL pretraining) — the actually-expensive stage
+
+Reviewer 3 said "the large DINOv2-L encoder," not "Phase 2's neck" specifically — Phase 1 trains
+the **full** encoder (not just the last 4 blocks) over 191K unlabeled images with an 8-view
+multi-crop forward per image, so it's worth profiling separately rather than implying Phase 2's
+numbers above are the whole story. Measured with `scripts/profile_compute_phase1.py`, reusing the
+real training code path (`phase1_dinov2.py`'s own `_build_segment`/`_DINOv2Wrapper`/loss modules —
+not reimplemented) against a small on-disk synthetic *unlabeled* image set (Phase 1 needs no
+labels, so no need for the full labeled-data harness), config `configs/phase1_dinov2.yaml` (the
+recipe the paper now describes: 224px bulk + 518px tail), single A100-80GB.
+
+**Parameters (student):** 351.70M total, 351.57M trainable — the **full encoder is trainable**
+(304.37M), unlike Phase 2's 50.40M-of-304.37M partial unfreeze; + two DINOHeads (dino + iBOT,
+47.33M, each into 65,536 prototypes).
+
+| Segment | Global res | Batch (eff.) | FLOPs/step (fwd, teacher+student) | Throughput | Peak memory |
+|---|---|---|---|---|---|
+| Bulk | 224px | 32 (×8 accum = 256) | 27,641 GFLOPs | 64.4 img/s (515 crop-views/s) | 33.16 GB |
+| Tail | 518px | 16 (×16 accum = 256) | 68,579 GFLOPs | 15.9 img/s (127 crop-views/s) | 55.03 GB |
+
+(8 views/image: 2 global + 6 local, both teacher (global-only, no_grad) and student (all 8)
+forward passes counted.)
+
+**Rough wall-clock extrapolation** (steady-state throughput × 191,170 unlabeled images; **caveat:**
+GPU-compute-bound only — real epochs may be slower if CPU-side augmentation/data-loading is the
+actual bottleneck, which this profiling harness doesn't exercise realistically since it cycles a
+tiny cached synthetic set):
+- Bulk: ~49.5 min/epoch × 100 epochs ≈ **82.5 GPU-hours**
+- Tail: ~3.3 hr/epoch × 4 epochs ≈ **13.4 GPU-hours**
+- **Total Phase 1 ≈ 96 GPU-hours (~4 days)** on a single A100-80GB — this dwarfs Phase 2's
+  per-model cost and is the real answer to "how expensive is this method," not just the
+  312M-parameter Phase-2 model alone.
+
 ---
 
 ## Key findings
