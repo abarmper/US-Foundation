@@ -91,7 +91,7 @@ Our main contributions are: (i) a two-stage DINOv2-HRNet pipeline that separates
 {\color{blue}
 We adapt the register-variant DINOv2-L/14 encoder~\cite{oquab2023dinov2} to unlabeled ultrasound frames with a DINOv2-faithful continued-pretraining recipe, combining CLS-token self-distillation~\cite{caron2021dino}, masked patch-token prediction~\cite{zhou2022ibot}, and an entropic spread regularizer~\cite{sablayrolles2018spreading}. As before, a local-to-global multi-crop strategy generates eight augmented views: two \emph{global} crops (32--100\% of the image area) and six \emph{local} crops (5--32\% of the area, $98\times98$), all pre-restricted to the ultrasound fan's foreground bounding box and resampled if a local crop lands mostly on background, so crops are not wasted on the uninformative black border common to sonographic frames. A trainable student processes all eight views; an exponential-moving-average (EMA) teacher, held in evaluation mode, processes only the two global views.
 
-Both branches project their CLS token through a three-layer MLP head, an $L_2$-normalized bottleneck, and a weight-normalized final layer~\cite{oquab2023dinov2} into $K{=}65{,}536$ prototypes. The teacher's logits are centered against a running EMA estimate and sharpened at a warmup teacher temperature (annealed $0.04\rightarrow0.07$ over the first 30 epochs); the student's are temperature-scaled and log-softmaxed---the same centering-and-sharpening mechanism as standard DINO self-distillation~\cite{caron2021dino}, now applied independently to two prediction heads (CLS-level and patch-level) rather than one. In addition to the CLS-level loss $\mathcal{L}_{\mathrm{dino}}$, a block-wise subset of the student's global-crop patch tokens is masked (capped at 50\% of tokens, restricted to foreground/tissue patches) and passed through a second, separately weight-normalized head; the student must recover the teacher's (unmasked, centered, sharpened) representation for each masked patch, giving a dense, patch-level loss:
+The DINO branch projects the CLS token through a three-layer MLP head, an $L_2$-normalized bottleneck, and a weight-normalized final layer~\cite{oquab2023dinov2} into $K{=}65{,}536$ prototypes; the iBOT branch applies an architecturally identical head, separately parameterized, to patch-token representations from the global views. The teacher's logits are centered against a running EMA estimate and sharpened at a warmup teacher temperature (annealed $0.04\rightarrow0.07$ over the first 30 epochs); the student's are temperature-scaled and log-softmaxed---the same centering-and-sharpening mechanism as standard DINO self-distillation~\cite{caron2021dino}, now applied independently to two prediction heads (CLS-level and patch-level) rather than one. In addition to the CLS-level loss $\mathcal{L}_{\mathrm{dino}}$, a block-wise subset of the student's global-crop patch tokens is masked (capped at 50\% of tokens, restricted to foreground/tissue patches) and passed through a second, separately weight-normalized head; the student must recover the teacher's (unmasked, centered, sharpened) representation for each masked patch, giving a dense, patch-level loss:
 \begin{equation}
 \mathcal{L}_{\mathrm{ibot}} = -\frac{1}{|\mathcal{M}|}\sum_{m\in\mathcal{M}} q_m \log p_m ,
 \label{eq:ibot-loss}
@@ -221,22 +221,23 @@ results reported here are based on the internal fold-0 validation split.
 
 Figure~\ref{fig:ssl-duration} sweeps SSL duration under this protocol against
 an off-the-shelf, non-adapted DINOv2 control. Representation quality is
-\textbf{non-monotonic} in adaptation duration (panel a): 20 epochs of
-low-resolution (224px) adaptation yields the best bulk-only checkpoint (MRE
-24.70), after which quality degrades---100 epochs scores worse than even 10
-(25.95 vs.\ 26.88 MRE), and briefly worse than no SSL at all on blend (0.0974
-vs.\ 0.0890)---consistent with representational drift away from the
-foundation model's priors as adaptation continues unchecked. A short,
+\textbf{non-monotonic} in adaptation duration (panel a). Among bulk-only
+checkpoints, ep20 achieves the lowest MRE (24.70~px); extending adaptation
+to ep60 or ep100 does not provide further improvement (26.43 and 25.95~px,
+respectively), while the ep100 checkpoint also degrades the blend score
+relative to the non-adapted baseline (0.0974 vs.\ 0.0890). This
+non-monotonic behavior suggests that prolonged adaptation does not
+necessarily translate into improved downstream localization. A short,
 high-resolution (518px) tail appended after either the 60- or 100-epoch bulk
 phase recovers most of this loss and reaches the best probe blend score of
 any checkpoint tested (100~ep~+~4-ep tail, blend 0.0747); its frozen-probe
 MRE (25.09) is close to, but does not surpass, the 20-epoch bulk-only peak
-(24.70). A full-resolution (518px throughout) control (panel b) confirms the
-low-res-bulk-then-tail design is not merely convenient but better: at
-matched epoch count it trails the 224px-bulk curve (ep20: MRE 25.96 full-res
-vs.\ 24.70 bulk-only). Probe performance thus improves rapidly during early
-adaptation but becomes non-monotonic thereafter, indicating diminishing
-returns at longer training durations: the best aggregate frozen-probe MRE is
+(24.70). At a matched 20-epoch duration, full-resolution adaptation (panel
+b) does not improve probe MRE over 224-pixel bulk training (25.96 vs.\
+24.70~px), supporting the use of lower-resolution bulk adaptation before the
+short high-resolution tail. Taken together, these results indicate
+diminishing returns at longer adaptation durations rather than a single
+dominant checkpoint: the best aggregate frozen-probe MRE is
 reached at ep20, whereas ep104 attains the best probe blend score and
 corresponds to the complete 224-to-518-pixel resolution curriculum; we
 therefore use ep104 as the final Phase-1 initialization. A task-wise

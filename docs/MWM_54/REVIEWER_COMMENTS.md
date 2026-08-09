@@ -238,21 +238,26 @@ tables:
 
 - **A 224px-bulk-then-518px-tail curve** (no-SSL → ep10 → ep20 → ep60 → ep100,
   plus tail-appended variants at ep60+5, ep60+10, ep100+4): quality is
-  **non-monotonic**, peaking at 20 epochs (MRE 24.70 vs. 31.27 no-SSL), then
-  *degrading* with more low-resolution-only training — by epoch 100 it is
-  worse than epoch 10 (25.95 vs. 26.88 MRE) and briefly worse than no SSL at
-  all on the blend metric (0.0974 vs. 0.0890). A short high-resolution tail
-  (as little as 5 epochs) recovers most of this loss and reaches the best
-  probe blend score of any checkpoint tested (100 bulk + 4-epoch tail, blend
-  0.0747); its MRE (25.09) is close to, but does not surpass, the epoch-20
-  peak (24.70) — a mixed result, not a clean win on every metric, which is
-  why we report it as diminishing returns / non-monotonic behavior rather
-  than claiming ep104 is universally optimal.
+  **non-monotonic**, peaking at 20 epochs (MRE 24.70 vs. 31.27 no-SSL); ep60
+  and ep100 do not improve on this (26.43 and 25.95 MRE respectively), and
+  ep100 is also briefly worse than no SSL at all on the blend metric (0.0974
+  vs. 0.0890) — diminishing returns rather than monotonic improvement, not a
+  claim that ep100 underperforms ep10 (it does not, on MRE: 25.95 < 26.88).
+  A short high-resolution tail (as little as 5 epochs) recovers most of this
+  loss and reaches the best probe blend score of any checkpoint tested (100
+  bulk + 4-epoch tail, blend 0.0747); its MRE (25.09) is close to, but does
+  not surpass, the epoch-20 peak (24.70) — a mixed result, not a clean win on
+  every metric, which is why we report it as diminishing returns /
+  non-monotonic behavior rather than claiming ep104 is universally optimal.
 - **A 518px-full-resolution-throughout control curve** (ep10/20/30, no
-  bulk/tail split): the same non-monotonic decline appears, and at every
-  matched epoch count it trails the bulk-then-tail design — evidence the
-  two-resolution curriculum itself (not just total duration) is doing real
-  work.
+  bulk/tail split): at ep20 — the bulk-only curve's own peak epoch count —
+  full-resolution trails the bulk-then-tail design (25.96 vs. 24.70 MRE),
+  supporting low-resolution bulk adaptation before a short high-resolution
+  tail. This does not hold at every matched epoch count: at ep10,
+  full-resolution actually scores better than bulk-only (25.79 vs. 26.88
+  MRE). We therefore only claim the design choice is supported at the
+  epoch count that matters most (the curriculum's bulk-phase peak), not as a
+  uniform trend across durations.
 
 This directly answers "what is the optimal duration" (mixed: ep20 on
 aggregate MRE, ep104 on blend + curriculum completeness — see above) and "is
