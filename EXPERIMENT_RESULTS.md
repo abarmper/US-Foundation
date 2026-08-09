@@ -169,8 +169,9 @@ multi-scale/intensity TTA, via `gubiometry predict`:
 |---|---|---|
 | `regression_predictions.zip` (Jul 13) | old **no-SSL HRNet** | **best external score so far** |
 | `submission_fold0_intermediate.zip` (Jul 16) | fold-0 intermediate | — |
-| `submission_dv2ep104.zip` (Jul 27) | `abl_ep20_simplehead_ml_dv2ep104` | worse externally than the no-SSL zip |
-| `submission_dv2ep20.zip` (Jul 27) | `abl_ep20_simplehead_ml_dv2ep20` | worse than the ep104 zip externally |
+| `submission_dv2ep104.zip` (Jul 27) | `abl_ep20_simplehead_ml_dv2ep104` (single fold-0) | worse externally than the no-SSL zip |
+| `submission_dv2ep20.zip` (Jul 27) | `abl_ep20_simplehead_ml_dv2ep20` (single fold-0) | worse than the ep104 zip externally |
+| `submission_ensemble_dv2ep104.zip` (⏳ queued) | `abl_ep20_simplehead_ml_dv2ep104`, **5-fold ensemble + TTA** (`configs/predict_ensemble_dv2ep104_5fold.yaml`) | first ensemble submission — all 3 above were single fold-0 models; directly tests the A6 lever against the small-cardiac-task weakness |
 
 **The internal ranking does NOT transfer to Codabench.** Internally (fold 0) the order is
 SSL-ep20 > SSL-ep104 > no-SSL; externally it is roughly **no-SSL > SSL-ep104 > SSL-ep20** — both

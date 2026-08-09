@@ -1,0 +1,29 @@
+# 5-fold ensemble x TTA prediction for the champion recipe (multilevel-concat simple
+# decoder, NEW-SSL ep104 encoder) -> submission.zip, for a fresh Codabench run.
+#
+# All 5 fold members are trained and 5-fold-confirmed (EXPERIMENT_RESULTS.md Section
+# 3b: mean blend ~0.0740, MRE ~25.24 internal). Every prior Codabench submission
+# (regression_predictions.zip, submission_dv2ep104.zip, submission_dv2ep20.zip) was a
+# SINGLE fold-0 model -- this is the first ensemble+TTA submission, directly targeting
+# the A6 lever (METHOD_CHANGES.md) specifically expected to help the small-data cardiac
+# tasks dragging down Table 3 (PSAX 82.29, A4C 40.62 MRE).
+#
+# Usage:
+#   python -m gubiometry predict --config configs/predict_ensemble_dv2ep104_5fold.yaml
+run_name: predict_ensemble_dv2ep104_5fold
+phase: predict
+
+predict:
+  member_run_dirs:
+    - runs/abl_ep20_simplehead_ml_dv2ep104
+    - runs/abl_ep20_simplehead_ml_dv2ep104_fold1
+    - runs/abl_ep20_simplehead_ml_dv2ep104_fold2
+    - runs/abl_ep20_simplehead_ml_dv2ep104_fold3
+    - runs/abl_ep20_simplehead_ml_dv2ep104_fold4
+  checkpoint_name: best_teacher_model.pth
+  image_dir: data/data/val_data       # challenge <task>/<file> layout, no labels
+  tta_canvases: [490, 518, 546]       # multi-scale TTA (all % 14 == 0)
+  tta_intensity: true
+  average_space: coord                # robust; members differ only by fold
+  out_json: submission_ensemble_dv2ep104.json
+  zip_output: true
