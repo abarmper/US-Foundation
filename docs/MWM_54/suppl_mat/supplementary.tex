@@ -1,0 +1,76 @@
+% supplementary.tex -- Supplementary material for "Self-Supervised Domain
+% Adaptation with DINOv2-HRNet for Multi-Task Ultrasound Landmark Detection".
+% Same llncs.cls skeleton as main.tex, kept minimal (Table S1 only for now).
+%
+% Compile with pdflatex, e.g.:
+%   pdflatex supplementary && pdflatex supplementary
+%
+\documentclass[runningheads]{llncs}
+
+\usepackage[T1]{fontenc}
+\usepackage{microtype}
+\usepackage{booktabs}
+
+\begin{document}
+
+\title{Self-Supervised Domain Adaptation with DINOv2-HRNet for Multi-Task Ultrasound Landmark Detection}
+\titlerunning{SSL Domain Adaptation with DINOv2-HRNet for Ultrasound Landmarks}
+
+\author{Anna Panagiotakopoulou\inst{1} \and
+Alexandros Barmperis\inst{1,2} \and
+Vasileios E. Katsigiannis\inst{1} \and
+George K. Matsopoulos\inst{1}}
+
+\authorrunning{A. Panagiotakopoulou et al.}
+
+\institute{Biomedical Engineering Laboratory, School of Electrical and Computer Engineering, \\
+National Technical University of Athens, Athens, Greece \and
+Archimedes Research Unit, Athena Research Center, Athens, Greece}
+
+\maketitle
+
+\begin{center}
+{\Large\bfseries Supplementary Material}
+\end{center}
+
+\section*{S1. Task-Specific Sensitivity to Phase-1 Adaptation Duration}
+
+Section~4.2 of the main paper reports frozen-encoder probe results
+macro-averaged over all nine tasks (Table~2). Here we report the same
+frozen-probe checkpoints broken down per task, to check whether the
+preferred Phase-1 adaptation duration is uniform across tasks.
+
+\renewcommand{\thetable}{S\arabic{table}}
+\begin{table}[h]
+\caption{Task-specific sensitivity to Phase-1 adaptation duration. For each
+task, the best-scoring frozen-probe checkpoint (mean radial error, MRE, orig.\
+px, fold-0 internal validation) and how the selected ep104 checkpoint
+compares to that task-specific optimum.}
+\label{tab:supp-per-task-duration}
+\centering
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Task & Best checkpoint & Best MRE (px) & ep104 MRE (px) & Rel.\ diff.\ from best \\
+\midrule
+AOP         & ep20  & 4.47  & 4.82  & +7.8\% \\
+FA          & ep60  & 18.05 & 18.27 & +1.2\% \\
+FUGC        & ep100 & 9.64  & 9.94  & +3.1\% \\
+HC          & ep104 & 25.68 & 25.68 & 0.0\% \\
+fetal\_femur & ep104 & 17.53 & 17.53 & 0.0\% \\
+A4C         & ep60  & 54.01 & 55.01 & +1.9\% \\
+PLAX        & ep60  & 19.35 & 20.56 & +6.3\% \\
+PSAX        & ep20  & 45.30 & 46.21 & +2.0\% \\
+IVC         & ep20  & 17.21 & 27.88 & +62.0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The preferred adaptation duration varies across tasks, with task-specific
+optima spanning ep20--ep104. Nevertheless, the selected ep104 checkpoint
+remains within 8\% MRE of the task-specific optimum for eight of nine tasks.
+The larger deviation for IVC should be interpreted cautiously given the
+small sample size of this task. Adaptation-duration preference is thus task
+dependent, but ep104 provides a reasonable single shared checkpoint for the
+multi-task setting.
+
+\end{document}
