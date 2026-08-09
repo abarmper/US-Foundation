@@ -37,6 +37,7 @@ Sorted by `challenge_blend`. All fold 0, unfreeze 4, 150 ep.
 | `abl_nossl_fold0` | none | simple | single | hrnet | 0.0 | 0.0740 | 28.98 | ✅ done |
 | `phase2_simple_dv2ep20` | **NEW** ep20 | simple | single | hrnet | 0.0 | 0.0791 | 28.85 | ✅ done |
 | `abl_ep20_upgraded_dv2ep20` | **NEW** ep20 | upgraded | multilevel | hrnet | 0.5 | 0.0842 | 26.70 | ✅ done |
+| `abl_ep20_upgraded_dv2ep104` | **NEW** ep104 (224 bulk + 518 tail) | upgraded | multilevel | hrnet | 0.5 | ⏳ queued | ⏳ queued | ⏳ queued — fills the missing HRNet+multilevel+NEW-ep104 cell in the decoder ablation grid |
 | `abl_ep20_upgraded` | old ep20 | upgraded | multilevel | hrnet | 0.5 | 0.0946 | 31.41 | ✅ done |
 | `phase2_baseline_fold0_ssl20` | old ep20 | simple | single | hrnet | 0.0 | 0.0973 | 33.95 | ✅ done |
 | `phase2_upgraded_fold0` | old ep10 | upgraded | multilevel | hrnet | 0.5 | 0.1006 | 31.12 | ✅ done |

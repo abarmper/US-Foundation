@@ -1,0 +1,60 @@
+# Fills the missing cell flagged in the decoder/multilevel ablation discussion:
+# NEW-SSL ep104 encoder (224px bulk + 518px tail) + multilevel input + HRNet decoder +
+# upgraded Phase-2 recipe + last-4-block (partial) fine-tuning, fold 0.
+#
+# This exact combination has never been run -- confirmed against EXPERIMENT_RESULTS.md
+# (every ep104 result belongs to the simple-decoder `simplehead_ml` family or the
+# frozen probe) and against the local runs/ checkpoints (the only HRNet+multilevel+
+# upgraded run present, `abl_ep20_upgraded`, uses the OLD/legacy multicrop ep20
+# checkpoint, not NEW-SSL ep104). Identical to abl_ep20_upgraded.yaml (the HRNet
+# anchor) except phase1_weights points at the NEW-SSL ep104 checkpoint instead of the
+# legacy multicrop ep20 one.
+#
+# Purpose: (1) completes the single-level/multi-level x HRNet/simple-decoder ablation
+# grid on matched NEW-SSL footing, (2) gives a real fold-0 number for "NEW ep104 +
+# HRNet decoder + upgraded recipe" before deciding whether it's worth a full 5-fold +
+# ensemble Codabench submission alongside the already-queued simplehead_ml one.
+#
+# Usage:
+#   python -m gubiometry phase2 --config configs/abl_ep20_upgraded_dv2ep104.yaml
+run_name: abl_ep20_upgraded_dv2ep104
+phase: phase2
+seed: 42
+phase1_weights: runs/phase1_dinov2/checkpoints/dinov2_adapted_ep104.pth
+
+model:
+  backbone:
+    name: dinov2_vitl14_reg
+    unfreeze_last_n_blocks: 4
+  neck:
+    branch_width: [128, 96, 64]
+    dropout_p: 0.3
+    input_mode: multilevel
+    feature_layers: [5, 11, 17, 23]
+    shared_head: false
+  heatmap_size: 148
+
+data:
+  data_root: data/data/train_data
+  kfold_dir: splits/kfold_v1
+  fold: 0
+  batch_size: 64
+  num_workers: 8
+  canvas: 518
+  sample_temp: 0.5
+
+optim:
+  lr: 2.0e-4
+  encoder_lr_mult: 0.1
+  llrd_decay: 0.75
+  amp_dtype: bf16
+  weight_decay: 1.0e-2
+  epochs: 150
+  warmup_epochs: 15
+  softargmax_temp: 10.0
+  loss_space: original
+  dsnt_lambda: 0.1
+  dsnt_type: js
+  dsnt_sigma: 1.0
+  early_stop_patience: 40
+  select_metric: challenge_blend
