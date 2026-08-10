@@ -26,7 +26,7 @@
                         % Introduction) visibly space paragraphs further apart
                         % than dense pages, even though the source formatting
                         % is identical
-%\usepackage{float}      % [H] float placement -- keeps tables/figures exactly
+\usepackage{float}      % [H] float placement -- keeps tables/figures exactly
                         % where declared in the source instead of drifting to
                         % the top of a later page (matters while sections are
                         % still placeholder-only with little body text)
@@ -68,9 +68,9 @@ Landmark localization \and HRNet.}
 
 
 \section{Introduction}
-Ultrasound biometry converts a small set of anatomical landmarks into clinically meaningful measurements, such as fetal biometric parameters~\cite{salomon2019isuog}, labor progression indices~\cite{ghi2018isuog,ramirez2025intrapartum}, and cardiac structural measurements~\cite{mitchell2019comprehensive}. Landmark localization has been studied extensively with single-task models~\cite{avisdris2022biometrynet,bai2026iugc,smistad2020real,yim2024assessment,zhou2020aop,lu2022aop,bai2025landmarkchallenge}, but multi-centre benchmarks reveal that site and scanner variability substantially degrades generalization~\cite{bai2026beyond,divece2026multicentre}. This heterogeneity renders task-specific supervision insufficient, motivating the need for a unified pipeline that can preserve spatial accuracy and measurement reliability under the cross-domain distribution shift central to the challenge (GU\_Biometry)~\cite{gu_biometry,deng2026baseline}.
+Ultrasound biometry converts a small set of anatomical landmarks into clinically meaningful measurements, such as fetal biometric parameters~\cite{salomon2019isuog}, labor progression indices~\cite{ghi2018isuog,ramirez2025intrapartum}, and cardiac structural measurements~\cite{mitchell2019comprehensive}. Landmark localization has been studied extensively with single-task models~\cite{avisdris2022biometrynet,bai2026iugc,zhou2020aop,lu2022aop,bai2025landmarkchallenge}, but multi-centre benchmarks reveal that site and scanner variability substantially degrades generalization~\cite{bai2026beyond,divece2026multicentre}. This heterogeneity renders task-specific supervision insufficient, motivating the need for a unified pipeline that can preserve spatial accuracy and measurement reliability under the cross-domain distribution shift central to the challenge (GU\_Biometry)~\cite{gu_biometry,deng2026baseline}.
 
-Foundation models have advanced medical image analysis through reusable representation learning from unlabeled data: self-supervised transformers like DINOv2 learn transferable visual features without manual labels~\cite{oquab2023dinov2}, though direct transfer to sonography remains challenging given ultrasound's distinct texture statistics, acquisition physics, and artifacts~\cite{guan2022domain,wang2021deep}. Recent ultrasound foundation models~\cite{jiao2024usfm,ambsdorf2025general,maani2025fetalclip,jiang2025ultrafedfm,lin2025uusic} motivate domain-specific pretraining, but primarily target image-level classification, dense prediction, or few-shot analysis, leaving unified sparse landmark localization across biometric domains underexplored.
+Foundation models have advanced medical image analysis through reusable representation learning from unlabeled data: self-supervised transformers like DINOv2 learn transferable visual features without manual labels~\cite{oquab2023dinov2}, though direct transfer to sonography remains challenging given ultrasound's distinct texture statistics, acquisition physics, and artifacts~\cite{guan2022domain}. Recent ultrasound foundation models~\cite{jiao2024usfm,ambsdorf2025general,lin2025uusic} motivate domain-specific pretraining, but primarily target image-level classification, dense prediction, or few-shot analysis, leaving unified sparse landmark localization across biometric domains underexplored.
 
 Landmark-based biometry requires global context alongside fine spatial precision. Vision Transformers extract robust features~\cite{dosovitskiy2021image,oquab2023dinov2} and have been adapted for keypoints (e.g., TransPose~\cite{yang2021transpose}, ViTPose~\cite{xu2022vitpose}). However, their coarse tokenization reduces native spatial resolution, making precise coordinate localization more challenging; even hierarchical variants such as Swin~\cite{liu2021swin} rely on progressive downsampling. We therefore pair foundation model features with a High-Resolution Network (HRNet)-style multi-resolution neck~\cite{sun2019hrnet}, preferred over standard U-Net architectures to maintain continuous high-resolution spatial detail throughout the network, critical for fine coordinate estimation.
 
@@ -80,7 +80,7 @@ Our main contributions are: (i) a two-stage DINOv2-HRNet pipeline that separates
 
 \begin{figure}[tb]
 \centering
-\includegraphics[width=\textwidth]{figures/Phase1_rev_v2.pdf}
+\includegraphics[width=\textwidth]{figures/fig1_phase1_pipeline.pdf}
 \caption{{\color{blue}Phase 1 self-supervised domain adaptation.}}
 \label{fig:pipeline}
 \end{figure}
@@ -111,7 +111,7 @@ To recover fine spatial resolution from the coarse $37\times37$ transformer toke
 
 \begin{figure}[tb]
 \centering
-\includegraphics[width=\textwidth]{figures/Phase2_rev.pdf}
+\includegraphics[width=\textwidth]{figures/fig2_hrnet_neck.pdf}
 %\caption{Detailed view of Phase 2 (expanding the "Neck" and "Regression" black boxes of Fig.~\ref{fig:pipeline}): branch spawning, the two exchange units, and the final multi-scale fusion into a $148\times148$, 128-channel representation, followed by task routing, the nine task-specific heads, and soft-argmax coordinate decoding.}
 \caption{Phase~2 architecture: HRNet-style branch spawning and exchange, fusion into a $148\times148$, 128-channel map, task-routed heads, and soft-argmax decoding.}
 \label{fig:neck-zoom}
@@ -128,18 +128,18 @@ p_k = \text{softmax}(\tau \cdot \ell_k), \qquad
 (\hat{x}_k, \hat{y}_k) = \Big(\sum_{(u,v)} p_k(u,v)\, u,\ \sum_{(u,v)} p_k(u,v)\, v\Big) \cdot \frac{518}{H},
 \label{eq:softargmax}
 \end{equation}
-with temperature $\tau=10.0$ and $H$ the logit resolution ($148$). At inference, predictions are inverse-letterboxed to original-image pixels, matching the coordinate space used for validation and official evaluation. Training uses a masked $L_1$ loss, reweighted by each image's letterbox scale factor so residuals are measured in original-pixel units matching the metric's scale, together with a light DSNT-style regularizer~\cite{nibali2018numerical}.
+with temperature $\tau=10.0$ and $H$ the logit resolution ($148$). At inference, predictions are inverse-letterboxed to original-image pixels, matching the coordinate space used for validation and official evaluation. Training uses a masked $L_1$ loss over annotated keypoints, reweighted by each image's letterbox scale factor so residuals are measured in original-pixel units matching the metric's scale, together with a light DSNT-style regularizer~\cite{nibali2018numerical}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Experiments}
 \subsection{Dataset and Preprocessing}
-We evaluate on the GU\_Biometry MICCAI 2026 Challenge dataset~\cite{gu_biometry,bai2026fugc}, spanning multi-vendor 2D ultrasound across three clinical domains (intrapartum, prenatal, and cardiac) and nine distinct biometric tasks, each defining landmarks for a different clinical measurement. The released training data comprise 197{,}938 images in total: 6{,}768 labeled and 191{,}170 unlabeled (a $\sim$3.4\% labeled fraction). Both pools are highly imbalanced across tasks: labeled counts range from $\sim$4{,}000 (AoP) to under 100 (IVC, PLAX, PSAX), and unlabeled counts are similarly skewed---fetal femur has none at all. For supervised training, the labeled set is split 80\%/20\%, yielding 5{,}414 training and 1{,}354 validation images.
+We evaluate on the GU\_Biometry dataset~\cite{gu_biometry,bai2026fugc}, spanning multi-vendor 2D ultrasound across three clinical domains (intrapartum, prenatal, and cardiac) and nine distinct biometric tasks, each defining landmarks for a different clinical measurement. The released training data comprise 197{,}938 images in total: 6{,}768 labeled and 191{,}170 unlabeled (a $\sim$3.4\% labeled fraction). Both pools are highly imbalanced across tasks: labeled counts range from 4{,}000 (AoP) to under 100 (IVC, PLAX, PSAX), and unlabeled counts are similarly skewed---fetal femur has none at all. For supervised training, the labeled set is split 80\%/20\%, yielding 5{,}414 training and 1{,}354 validation images.
 
-Native image sizes vary substantially across tasks (e.g., median $336\times544$ for FUGC to $768\times1024$ for FA); to preserve landmark geometry for the DINOv2 encoder, all images undergo an aspect-ratio-preserving resize and zero-padding to a $518\times518$ canvas, followed by ImageNet pixel normalization. On top of this base preprocessing, Phase~2 supervised training applies moderate augmentation (affine scale up to $\pm5\%$, translation up to $\pm10\%$, rotation up to $\pm30^\circ$, brightness/contrast $\pm0.2$, a gamma-or-CLAHE choice, and light Gaussian noise), {\color{blue}Phase~1 unlabeled adaptation applies an ultrasound-aware recipe (\texttt{us\_v2}): images are pre-cropped to the ultrasound fan's foreground bounding box, global crops receive gentle $\pm10^\circ$ rotation (local crops none), and both receive a randomized brightness/contrast, gamma, or CLAHE choice plus Gaussian blur or noise, with background-heavy local crops resampled by foreground texture} to encourage robustness to acquisition variability, and validation and inference use only the base preprocessing, with no augmentation.
+Native image sizes vary substantially across tasks (e.g., median $336\times544$ for FUGC to $768\times1024$ for FA); to preserve landmark geometry for the DINOv2 encoder, all images undergo an aspect-ratio-preserving resize and zero-padding to a $518\times518$ canvas, followed by ImageNet pixel normalization. On top of this base preprocessing, both phases use common intensity augmentations such as brightness/contrast, gamma/CLAHE, and blur/noise. Phase~2 additionally uses affine transformations, while {\color{blue}Phase~1 uses ultrasound-specific foreground cropping, milder rotations, and resampling of background-heavy local crops.} Validation and inference use only the base preprocessing, with no augmentation.
 
 \subsection{Implementation Details}
-All experiments were executed on a single NVIDIA A100-SXM4-80GB GPU with a batch size of 64. Training uses bf16 mixed precision with gradient-norm clipping and AdamW (weight decay excluded on norm/bias parameters, dimensionality $<2$; base LR $2\times10^{-4}$, 15-epoch linear warmup, 150-epoch cosine decay). The backbone uses layer-wise learning rate decay (LLRD, factor $0.75$), starting at $0.1\times$ base LR for the last four unfrozen blocks. A Phase~2 EMA teacher ($\alpha=0.999$) is maintained for stabilized validation, early stopping (patience 40), and final inference. A temperature-scaled ($\tau=0.5$) task-homogeneous sampler allocates per-task batches in proportion to (task size)$^{0.5}$, damping AoP's $\sim$40$\times$ raw imbalance over the smallest cardiac tasks to a $\sim$6$\times$ replay-rate gap. Checkpoint selection uses an internal macro-averaged, per-task-normalized development criterion combining landmark and clinical-measurement error in original-pixel space, which we refer to below as the \emph{blend} score (lower is better); it is an internal proxy for model selection only, distinct from the official Codabench MRE/MAE actually reported in Table~1, since its per-task normalizer is not the official challenge normalizer. {\color{blue}Phase~1 (351.7M parameters, fully trained) runs at 64.4~img/s (224px bulk) and 15.9~img/s (518px tail), $\sim$96 GPU-hours in total; Phase~2 (312.2M parameters, 58.2M trainable) trains at 84.4~img/s and infers at up to 127.3~img/s under bf16 autocast.}
+All experiments were executed on a single NVIDIA A100-SXM4-80GB GPU with a batch size of 64. Training uses bf16 mixed precision with gradient-norm clipping and AdamW (weight decay excluded on norm/bias parameters, dimensionality $<2$; base LR $2\times10^{-4}$, 15-epoch linear warmup, 150-epoch cosine decay). The backbone uses layer-wise learning rate decay (LLRD, factor $0.75$), starting at $0.1\times$ base LR for the last four unfrozen blocks. A Phase~2 EMA teacher ($\alpha=0.999$) is maintained for stabilized validation, early stopping (patience 40), and final inference. A temperature-scaled ($\tau=0.5$) task-homogeneous sampler allocates per-task batches in proportion to the square root of task size, so that AoP, despite having 82 times more labeled images than PSAX, is seen only 9 times as often per epoch. Checkpoint selection uses an internal macro-averaged, per-task-normalized development criterion combining landmark and clinical-measurement error in original-pixel space, which we refer to below as the \emph{blend} score (lower is better). We use this criterion solely for internal model selection on the held-out validation split; final performance is reported separately using the official Codabench MRE/MAE in Table~1. {\color{blue}Phase~1 (351.7M parameters, fully trained) runs at 64.4~img/s (224px bulk) and 15.9~img/s (518px tail), $\sim$96 GPU-hours in total; Phase~2 (312.2M parameters, 58.2M trainable) trains at 84.4~img/s and infers at up to 127.3~img/s under bf16 autocast.}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -154,10 +154,7 @@ All experiments were executed on a single NVIDIA A100-SXM4-80GB GPU with a batch
 % ============================================================
 
 \subsection{Official Challenge Evaluation}
-{\color{blue}We report the official evaluation first; the Phase-1 checkpoint and Phase-2 recipe choices behind it are justified by the ablations in Sections~\ref{sec:ssl-duration} and~\ref{sec:phase2-recipe} that follow.} Using the best Phase-1 checkpoint (Table~\ref{tab:phase1-phase2}) and the upgraded Phase-2 recipe, we submit a single model to the official Codabench evaluation (Table~\ref{tab:codabench-results}).
-
-Table~\ref{tab:codabench-results} shows that performance varies substantially across domains, reflecting the heterogeneity of anatomy, data scarcity, and task-specific annotation structure.
-Figure~\ref{fig:best-per-task} shows examples for four tasks spanning different clinical domains, illustrating the high-performing localization behavior of the final model.
+{\color{blue}We report the official evaluation first, with the Phase-1 and Phase-2 choices behind it justified by the ablations in Sections~\ref{sec:ssl-duration} and~\ref{sec:phase2-recipe} that follow.} Using the best Phase-1 checkpoint (Table~\ref{tab:phase1-phase2}) and the upgraded Phase-2 recipe, we submit a single model to the official Codabench evaluation (Table~\ref{tab:codabench-results}), where performance varies substantially across domains due to anatomy, data scarcity, and annotation structure. Figure~\ref{fig:best-per-task} illustrates localization on four representative tasks.
 
 \begin{table}[tb]
 \caption{Official GU\_Biometry Codabench evaluation per task.}
@@ -192,7 +189,7 @@ Figure~\ref{fig:best-per-task} shows examples for four tasks spanning different 
 % upgraded Phase-2 recipe) model's actual predictions before submission.
 \begin{figure}[tb]
 \centering
-\includegraphics[width=\textwidth]{fig_best_per_task_row.pdf}
+\includegraphics[width=\textwidth]{figures/fig3_best_per_task.pdf}
 \caption{Representative high-performing validation examples for four tasks spanning different clinical domains. Ground-truth (green) vs.\ predicted (red) keypoints.}
 \label{fig:best-per-task}
 \end{figure}
@@ -201,75 +198,71 @@ Figure~\ref{fig:best-per-task} shows examples for four tasks spanning different 
 \label{sec:ssl-duration}
 
 {\color{blue}
-To isolate the effect of Phase-1 representation learning from downstream
-fine-tuning, we introduce a \emph{frozen-encoder probe} (henceforth, the
-probe). For each Phase-1 checkpoint, the DINOv2 encoder is kept completely
-frozen (\texttt{unfreeze}=0), while the same downstream localization components
-are trained for 25 epochs on fold~0. All probe runs use an identical
-configuration, including the multi-level neck, $148\times148$ prediction
-resolution, and task-homogeneous sampling, so that the encoder initialization
-is the only varying factor. We use this controlled protocol to compare
-off-the-shelf DINOv2 with different SSL adaptation checkpoints and thereby
-assess how representation quality evolves with adaptation duration. The probe
-is intended only as a diagnostic for relative encoder quality; its MRE values
-are therefore not directly comparable with the fully fine-tuned models reported
-in Tables~\ref{tab:phase1-phase2} and~\ref{tab:codabench-results}. All probe
-results reported here are based on the internal fold-0 validation split.
+To isolate representation quality from downstream fine-tuning, we evaluate
+each Phase-1 checkpoint with a frozen-encoder probe. The DINOv2 encoder is
+fixed (\texttt{unfreeze}=0), while an identical downstream localization
+model is trained for 25 epochs on fold~0 using the same multi-level neck,
+$148\times148$ output resolution, and task-homogeneous sampler. Thus, only
+the encoder initialization varies across runs. Probe results are used
+solely to compare relative representation quality on the internal fold-0
+validation split and are not directly comparable with the fully fine-tuned
+models reported elsewhere in the Results section.
 
-Figure~\ref{fig:ssl-duration} sweeps SSL duration under this protocol against
-an off-the-shelf, non-adapted DINOv2 control (blend 0.0890, MRE 31.27~px).
-Representation quality is
-\textbf{non-monotonic} in adaptation duration (panel a). Among bulk-only
-checkpoints, ep20 achieves the lowest MRE (24.70~px); extending adaptation
-to ep60 or ep100 does not provide further improvement (26.43 and 25.95~px,
-respectively), while the ep100 checkpoint also degrades the blend score
-relative to the non-adapted baseline (0.0974 vs.\ 0.0890). This
+Figure~\ref{fig:ssl-duration} sweeps SSL duration under this protocol
+against an off-the-shelf, non-adapted DINOv2 control (blend 0.0890, MRE
+31.27~px). Downstream probe performance is non-monotonic with adaptation
+duration (panel a): the ep20 bulk-only MRE optimum (24.70~px) is not
+improved by further bulk-only training, and by ep100 the blend score is
+worse than the non-adapted baseline (0.0974 vs.\ 0.0890) --- this
 non-monotonic behavior suggests that prolonged adaptation does not
-necessarily translate into improved downstream localization. A short,
-high-resolution (518px) tail appended after either the 60- or 100-epoch bulk
-phase recovers most of this loss and reaches the best probe blend score of
-any checkpoint tested (100~ep~+~4-ep tail, blend 0.0747); its frozen-probe
-MRE (25.09) is close to, but does not surpass, the 20-epoch bulk-only peak
-(24.70). At a matched 20-epoch duration, full-resolution adaptation (panel
-b) does not improve probe MRE over 224-pixel bulk training (25.96 vs.\
-24.70~px), supporting the use of lower-resolution bulk adaptation before the
-short high-resolution tail. Taken together, these results indicate
-diminishing returns at longer adaptation durations rather than a single
-dominant checkpoint: the best aggregate frozen-probe MRE is
-reached at ep20, whereas ep104 attains the best probe blend score and
-corresponds to the complete 224-to-518-pixel resolution curriculum; we
-therefore use ep104 as the final Phase-1 initialization. A task-wise
-analysis further shows that the preferred adaptation duration is task
-dependent, with per-task optima spanning ep20--ep104, while ep104 remains
-within 8\% MRE of the task-specific optimum for eight of nine tasks.
+necessarily translate into improved downstream localization. A short
+518px tail improves the later bulk checkpoints and yields the best probe
+blend score of any checkpoint tested (100~ep~+~4-ep tail, blend 0.0747),
+though its MRE (25.09) does not surpass the ep20 bulk-only MRE optimum. At
+a matched 20-epoch duration, full-resolution adaptation (panel b) does not
+improve on 224-pixel bulk training (25.96 vs.\ 24.70~px), supporting the
+low-resolution-bulk-then-tail curriculum. The lowest aggregate probe MRE is
+obtained at ep20, whereas ep104 achieves the best blend score and completes
+the 224-to-518-pixel resolution curriculum. We therefore select ep104 as
+the final Phase-1 initialization. Task-specific optima range from ep20 to
+ep104, although ep104 remains within 8\% MRE of the per-task optimum for
+eight of nine tasks.
 }
 
 \begin{figure}[tb]
 \centering
 \subcaptionbox{224px bulk-only + high-res tail\label{fig:ssl-duration-a}}{%
-  \includegraphics[width=0.48\textwidth]{drafts/fig_ssl_duration_224_DRAFTv2.pdf}}
+  \includegraphics[width=0.48\textwidth]{figures/fig4a_ssl_duration_224.pdf}}
 \hfill
 \subcaptionbox{518px full-resolution control\label{fig:ssl-duration-b}}{%
-  \includegraphics[width=0.48\textwidth]{drafts/fig_ssl_duration_fullres_DRAFTv2.pdf}}
+  \includegraphics[width=0.48\textwidth]{figures/fig4b_ssl_duration_fullres.pdf}}
 \caption{\color{blue}Frozen-encoder probe: MRE (orig.\ px) vs.\ Phase-1 SSL
 adaptation duration, fold-0 internal validation. (a) 224px bulk-only
-checkpoints (0/10/20/60/100 epochs) plus tail-appended variants (diamonds,
-connected by a dashed line to their parent bulk checkpoint). (b) 518px
-full-resolution-throughout control. In both panels, epoch 0 (red) is the
-off-the-shelf, non-adapted DINOv2 baseline.}
+checkpoints (0/10/20/60/100 epochs) plus tail-appended variants. (b) 518px
+full-resolution-throughout control.}
 \label{fig:ssl-duration}
 \end{figure}
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/fig5_pca_ep104.pdf}
+\caption{{\color{blue}DINOv2 patch-token PCA features at the selected ep104 checkpoint, across all nine tasks.}}
+\label{fig:feature-maps}
+\end{figure}
+
 {\color{blue}
-A matched frozen-probe comparison yielded mixed results: registers improved
-the blend score (0.0890 vs.\ 0.0976), whereas the standard backbone achieved
-a lower MRE (29.34 vs.\ 31.27~px). We therefore retain registers based
-primarily on their reported ability to suppress high-norm artifact tokens in
-intermediate ViT features~\cite{darcet2024registers}, which is relevant
-because our neck directly consumes dense patch representations.
+\textbf{Register-token ablation.} A matched probe comparison produced mixed
+results: registers improved the blend score (0.0890 vs.\ 0.0976), whereas
+the standard backbone achieved lower MRE (29.34 vs.\ 31.27~px). We therefore
+retain registers primarily for their reported ability to suppress high-norm
+artifact tokens in intermediate ViT features~\cite{darcet2024registers},
+which is relevant because our neck directly consumes dense patch
+representations.
 }
 
-To select the Phase-1 adaptation duration used for all subsequent experiments, we compare the epoch-10 and epoch-20 checkpoints as Phase-2 initializations, training the baseline Phase-2 recipe on fold~0 and scoring on that fold's held-out validation split with our local challenge-metric scorer (Section~\ref{sec:phase2}). {\color{blue}This comparison predates the iBOT/KoLeo recipe of Section~\ref{sec:phase1} and uses the earlier CLS-only multi-crop self-distillation it superseded, and full fine-tuning (unlike the probe above) largely compresses the gap between checkpoints;} Table~\ref{tab:phase1-phase2} reports the results: the epoch-20 checkpoint performs better across all metrics and is the Phase-1 initialization used for the final model. Qualitative PCA of patch-token feature maps are shown in Figure~\ref{fig:feature-maps}.
+\subsection{Phase-2 Recipe Selection}
+\label{sec:phase2-recipe}
+The Phase-1 initialization is fixed at the epoch-10 checkpoint. To isolate the Phase-2-specific upgrades from the backbone choice, both configurations use the register-variant backbone. We then compare the baseline Phase-2 recipe (single-mode neck, $128\times128$ heatmap, without LLRD, canvas-space loss, without DSNT) against the upgraded recipe (multilevel neck, $148\times148$ heatmap, LLRD $0.75$, original-pixel loss, DSNT $0.1$), on fold~0 only with the same local scorer. Table~\ref{tab:phase1-phase2} reports the results, where the upgraded recipe improves both MRE and AvgMAE and is carried forward to the final model.
 
 \begin{table}[tb]
 \caption{Fold-0 internal validation: Phase-1 checkpoint duration (left, baseline recipe) and Phase-2 recipe (right, epoch-10 checkpoint), side by side. Mean radial error (MRE, px) and mean absolute clinical-measurement error (AvgMAE), macro-averaged over all nine tasks.}
@@ -284,17 +277,6 @@ Mean AvgMAE & 25.33 & \textbf{23.37} & Mean AvgMAE & 25.33 & \textbf{22.52} \\
 \bottomrule
 \end{tabular}
 \end{table}
-
-\begin{figure}[tb]
-\centering
-\includegraphics[width=\textwidth]{fig4_variant_seed3.pdf}
-\caption{{\color{blue}Representative PCA visualizations of DINOv2 patch-token features during ultrasound-domain adaptation, at epoch-10, epoch-60, and epoch-104 of the SSL recipe described in Section~\ref{sec:phase1}.}}
-\label{fig:feature-maps}
-\end{figure}
-
-\subsection{Phase-2 Recipe Selection}
-\label{sec:phase2-recipe}
-The Phase-1 initialization is fixed at the epoch-10 checkpoint. To isolate the Phase-2-specific upgrades from the backbone choice, both configurations use the register-variant backbone. We then compare the baseline Phase-2 recipe (single-mode neck, $128\times128$ heatmap, without LLRD, canvas-space loss, without DSNT) against the upgraded recipe (multilevel neck, $148\times148$ heatmap, LLRD $0.75$, original-pixel loss, DSNT $0.1$), on fold~0 only with the same local scorer. Table~\ref{tab:phase1-phase2} reports the results, where the upgraded recipe improves both MRE and AvgMAE and is carried forward to the final model.
 
 \section{Conclusion}
 We presented a two-stage DINOv2-HRNet pipeline for multi-task ultrasound landmark detection, coupling domain-targeted self-supervised adaptation with a top-down, multi-resolution HRNet-style neck to achieve competitive performance across nine heterogeneous clinical tasks. Future work includes a stratified 5-fold ensemble with multi-scale/intensity test-time augmentation, and ablating the neck's multi-level fusion, head design, and fine-tuning depth.
@@ -312,7 +294,6 @@ the content of this article.
 % BibTeX users: specify bibliography style 'splncs04' (Springer's LNCS
 % style). Entries live in mybibliography.bib next to this file.
 %
-\clearpage
 \bibliographystyle{splncs04}
 \bibliography{mybibliography}
 

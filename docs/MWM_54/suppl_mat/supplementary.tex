@@ -12,6 +12,7 @@
 \usepackage{microtype}
 \usepackage{booktabs}
 \usepackage{multirow}
+\usepackage{graphicx}
 
 \begin{document}
 
@@ -144,5 +145,22 @@ heads). Inference currently runs in fp32 (the precision used by
 \texttt{predict.py}/\texttt{evaluate.py} at submission time); bf16 autocast
 inference is $\sim$7$\times$ faster at lower memory and is a straightforward
 future optimization, not yet enabled in the submitted pipeline.
+
+\renewcommand{\thefigure}{S\arabic{figure}}
+
+\section*{S4. Qualitative PCA Visualizations of Adapted Features}
+
+Extended version of the qualitative feature analysis in Section~2.1 of the
+main paper, showing the progression of DINOv2 patch-token features over the
+course of Phase-1 SSL adaptation.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{fig4_variant_seed3.pdf}
+\caption{Representative PCA visualizations of DINOv2 patch-token features
+during ultrasound-domain adaptation, at epoch-10, epoch-60, and epoch-104 of
+the SSL recipe described in Section~2.1 of the main paper.}
+\label{fig:supp-feature-maps}
+\end{figure}
 
 \end{document}
