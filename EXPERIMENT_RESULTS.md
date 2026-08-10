@@ -37,7 +37,7 @@ Sorted by `challenge_blend`. All fold 0, unfreeze 4, 150 ep.
 | `abl_nossl_fold0` | none | simple | single | hrnet | 0.0 | 0.0740 | 28.98 | ✅ done |
 | `phase2_simple_dv2ep20` | **NEW** ep20 | simple | single | hrnet | 0.0 | 0.0791 | 28.85 | ✅ done |
 | `abl_ep20_upgraded_dv2ep20` | **NEW** ep20 | upgraded | multilevel | hrnet | 0.5 | 0.0842 | 26.70 | ✅ done |
-| `abl_ep20_upgraded_dv2ep104` | **NEW** ep104 (224 bulk + 518 tail) | upgraded | multilevel | hrnet | 0.5 | 0.0763 | 27.37 | ✅ done (fold 0 only here -- see §3c for the full 5-fold sweep, in progress) |
+| `abl_ep20_upgraded_dv2ep104` | **NEW** ep104 (224 bulk + 518 tail) | upgraded | multilevel | hrnet | 0.5 | 0.0763 | 27.37 | ✅ done (fold 0; 5-fold mean 0.0707/25.69, see §3c) |
 | `abl_ep20_upgraded` | old ep20 | upgraded | multilevel | hrnet | 0.5 | 0.0946 | 31.41 | ✅ done |
 | `phase2_baseline_fold0_ssl20` | old ep20 | simple | single | hrnet | 0.0 | 0.0973 | 33.95 | ✅ done |
 | `phase2_upgraded_fold0` | old ep10 | upgraded | multilevel | hrnet | 0.5 | 0.1006 | 31.12 | ✅ done |
@@ -152,30 +152,31 @@ internally, not proof of anything vs. Codabench.
 
 ---
 
-## 3c. 5-fold CV -- upgraded recipe (HRNet decoder, multilevel), NEW ep104 SSL (in progress)
+## 3c. 5-fold CV -- upgraded recipe (HRNet decoder, multilevel), NEW ep104 SSL (complete)
 
 Upgraded recipe (multilevel neck, HRNet decoder, unfreeze 4, 150 ep, sample_temp 0.5),
 NEW `ep104` encoder (224 bulk + 518 tail) -- fills the missing HRNet+multilevel+NEW-ep104
 cell in the decoder ablation grid (see §1) across all 5 folds, matched-pair against
 §3 (same recipe, old ep20 SSL) and §3b (same NEW ep104 SSL, simple decoder instead of
 HRNet). All 5 folds launched back-to-back on 2 GPUs via an auto-chain (fold N+2 starts
-the moment fold N finishes); placeholders below are live and will be filled as each
-fold's early-stopping/150-epoch run completes.
+the moment fold N finishes).
 
 | Fold | Run | blend ↓ | MRE | status |
 |---|---|---|---|---|
 | 0 | `abl_ep20_upgraded_dv2ep104` | 0.0763 | 27.37 | ✅ done (early-stopped ep47, best ep7) |
 | 1 | `abl_ep20_upgraded_dv2ep104_fold1` | 0.0680 | 24.25 | ✅ done (early-stopped ep56, best ep16) |
-| 2 | `abl_ep20_upgraded_dv2ep104_fold2` | 0.0648 | 23.24 | ✅ done (early-stopped) -- best single fold of the sweep so far |
-| 3 | `abl_ep20_upgraded_dv2ep104_fold3` | ⏳ queued | ⏳ queued | 🔄 running (ep75/150, close to patience cutoff ep76) -- best so far 0.0612 @ ep36 |
+| 2 | `abl_ep20_upgraded_dv2ep104_fold2` | 0.0648 | 23.24 | ✅ done (early-stopped, best single fold) |
+| 3 | `abl_ep20_upgraded_dv2ep104_fold3` | 0.0612 | 23.02 | ✅ done (early-stopped ep76, best ep36) -- best fold overall |
 | 4 | `abl_ep20_upgraded_dv2ep104_fold4` | 0.0830 | 30.55 | ✅ done (early-stopped ep72, best ep32) -- weakest fold, MRE ~30px vs ~23-24px on every other fold |
-| **mean** | | ⏳ pending | ⏳ pending | 4/5 folds complete |
+| **mean** | | **0.0707** | **25.69** | all 5 folds complete |
 
-Early read (4/5 done): fold 2 (0.0648) is the best single fold of the sweep, fold 4 (0.0830) is
-clearly the weakest (MRE ~30px vs ~23-24px everywhere else) -- consistent with the same
-fold-to-fold spread already seen in §3/§3b (±13-30%). Provisional 4-fold mean ≈0.0743
-(0.0763+0.0680+0.0648+0.0830)/4, essentially tied with the simple-decoder champion recipe
-(§3b mean ≈0.0740) -- only fold 3 remains to confirm the final number.
+Spread 0.0612-0.0830 (±15%) -- same fold-to-fold noise pattern as §3/§3b, driven almost entirely
+by fold 4's much higher MRE (30.55px vs 23-27px on every other fold); trust the mean, not any
+single fold. **This HRNet-decoder recipe (mean 0.0707/25.69) edges out the simple-decoder champion
+recipe on matched NEW-ep104 SSL (§3b mean 0.0740/25.24)** -- essentially tied on MRE, modestly
+better on blend -- so decoder choice (HRNet vs simple) does not look like a large lever once SSL
+and fine-tune depth are held fixed; same leaky-split caveat applies (finding #18), this is an
+internal comparison only.
 
 ---
 
