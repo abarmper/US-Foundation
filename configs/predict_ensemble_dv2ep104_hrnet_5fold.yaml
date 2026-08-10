@@ -1,0 +1,27 @@
+# 5-fold ensemble x TTA prediction for the upgraded recipe (multilevel neck, HRNet
+# decoder, NEW-SSL ep104 encoder) -> submission.zip, for a Codabench run.
+#
+# All 5 fold members are trained and 5-fold-confirmed (EXPERIMENT_RESULTS.md Section
+# 3c: mean blend 0.0707, MRE 25.69 internal) -- edges out the simple-decoder champion
+# recipe (Section 3b: mean 0.0740/25.24) on matched NEW-ep104 SSL, internal comparison
+# only (finding #18 leaky-split caveat applies).
+#
+# Usage:
+#   python -m gubiometry predict --config configs/predict_ensemble_dv2ep104_hrnet_5fold.yaml
+run_name: predict_ensemble_dv2ep104_hrnet_5fold
+phase: predict
+
+predict:
+  member_run_dirs:
+    - runs/abl_ep20_upgraded_dv2ep104
+    - runs/abl_ep20_upgraded_dv2ep104_fold1
+    - runs/abl_ep20_upgraded_dv2ep104_fold2
+    - runs/abl_ep20_upgraded_dv2ep104_fold3
+    - runs/abl_ep20_upgraded_dv2ep104_fold4
+  checkpoint_name: best_teacher_model.pth
+  image_dir: data/data/val_data       # challenge <task>/<file> layout, no labels
+  tta_canvases: [490, 518, 546]       # multi-scale TTA (all % 14 == 0)
+  tta_intensity: true
+  average_space: coord                # robust; members differ only by fold
+  out_json: submission_ensemble_dv2ep104_hrnet.json
+  zip_output: true
