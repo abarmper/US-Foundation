@@ -167,16 +167,15 @@ fold's early-stopping/150-epoch run completes.
 | 0 | `abl_ep20_upgraded_dv2ep104` | 0.0763 | 27.37 | ✅ done (early-stopped ep47, best ep7) |
 | 1 | `abl_ep20_upgraded_dv2ep104_fold1` | 0.0680 | 24.25 | ✅ done (early-stopped ep56, best ep16) |
 | 2 | `abl_ep20_upgraded_dv2ep104_fold2` | 0.0648 | 23.24 | ✅ done (early-stopped) -- best single fold of the sweep so far |
-| 3 | `abl_ep20_upgraded_dv2ep104_fold3` | ⏳ queued | ⏳ queued | 🔄 running (ep48/150) -- best so far 0.0612 @ ep36, no new best since |
-| 4 | `abl_ep20_upgraded_dv2ep104_fold4` | ⏳ queued | ⏳ queued | 🔄 running (ep48/150) -- best so far 0.0830 @ ep32, weakest fold so far (MRE ~30px vs ~23-24px elsewhere) |
-| **mean** | | ⏳ pending | ⏳ pending | 3/5 folds complete |
+| 3 | `abl_ep20_upgraded_dv2ep104_fold3` | ⏳ queued | ⏳ queued | 🔄 running (ep75/150, close to patience cutoff ep76) -- best so far 0.0612 @ ep36 |
+| 4 | `abl_ep20_upgraded_dv2ep104_fold4` | 0.0830 | 30.55 | ✅ done (early-stopped ep72, best ep32) -- weakest fold, MRE ~30px vs ~23-24px on every other fold |
+| **mean** | | ⏳ pending | ⏳ pending | 4/5 folds complete |
 
-Early read (3/5 done): fold 2 (0.0648) is the best single fold of the sweep, ahead of folds
-0/1 (0.0763/0.0680) -- so this HRNet-decoder recipe looks competitive with or better than the
-simple-decoder champion recipe (§3b mean ≈0.0740) on matched NEW-ep104 SSL. But fold 4 is
-tracking noticeably worse (0.0830 so far, MRE ~30px vs ~23-24px on every other fold) -- the same
-kind of fold-to-fold spread seen in §3/§3b (±13-30%), so no partial number here, including fold 2's
-strong result, should be trusted over the eventual 5-fold mean once folds 3-4 finish.
+Early read (4/5 done): fold 2 (0.0648) is the best single fold of the sweep, fold 4 (0.0830) is
+clearly the weakest (MRE ~30px vs ~23-24px everywhere else) -- consistent with the same
+fold-to-fold spread already seen in §3/§3b (±13-30%). Provisional 4-fold mean ≈0.0743
+(0.0763+0.0680+0.0648+0.0830)/4, essentially tied with the simple-decoder champion recipe
+(§3b mean ≈0.0740) -- only fold 3 remains to confirm the final number.
 
 ---
 
