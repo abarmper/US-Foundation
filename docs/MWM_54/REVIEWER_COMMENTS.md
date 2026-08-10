@@ -207,11 +207,11 @@ Overall, the proposed DINOv2-HRNet pipeline is technically sound and well aligne
 
 | # | Paraphrase | Status |
 |---|---|---|
-| 3.1 | Deeper per-task error analysis (PSAX/A4C/HC) | Done — written up below |
-| 3.2 | §4.1 (ep20) vs. §4.2 (ep10) checkpoint inconsistency | Done — explained below; legacy comparison being retired in camera-ready |
+| 3.1 | Deeper per-task error analysis (PSAX/A4C/HC) | **Done — landed in `main.tex` §4.1**, right after Figure 3 |
+| 3.2 | §4.1 (ep20) vs. §4.2 (ep10) checkpoint inconsistency | Done — explained below; legacy comparison being retired in camera-ready (blocked on the pending ep104+HRNet 5-fold result, see Internal TODOs) |
 | 3.3 | Compute cost / throughput / memory not reported | Done — §3.2 + Supplementary Table S3 |
 | 3.4 | SSL duration studied only coarsely | Done — same evidence as 2.2, cross-referenced |
-| 3.5 | Comparison to other submissions / baselines on official scorer | Done — leaderboard reference point below |
+| 3.5 | Comparison to other submissions / baselines on official scorer | **Done — landed in `main.tex` §4.1**, right after the 3.1 paragraph |
 
 ### Our reply
 
