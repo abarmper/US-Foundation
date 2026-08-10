@@ -166,15 +166,17 @@ fold's early-stopping/150-epoch run completes.
 |---|---|---|---|---|
 | 0 | `abl_ep20_upgraded_dv2ep104` | 0.0763 | 27.37 | ✅ done (early-stopped ep47, best ep7) |
 | 1 | `abl_ep20_upgraded_dv2ep104_fold1` | 0.0680 | 24.25 | ✅ done (early-stopped ep56, best ep16) |
-| 2 | `abl_ep20_upgraded_dv2ep104_fold2` | ⏳ queued | ⏳ queued | 🔄 running -- best so far 0.0651 @ ep16 |
-| 3 | `abl_ep20_upgraded_dv2ep104_fold3` | ⏳ queued | ⏳ queued | 🔄 running -- best so far 0.0689 @ ep10, still improving |
-| 4 | `abl_ep20_upgraded_dv2ep104_fold4` | ⏳ queued | ⏳ queued | 🔄 running -- best so far 0.0916 @ ep9, noisier than the other folds |
-| **mean** | | ⏳ pending | ⏳ pending | 2/5 folds complete |
+| 2 | `abl_ep20_upgraded_dv2ep104_fold2` | 0.0648 | 23.24 | ✅ done (early-stopped) -- best single fold of the sweep so far |
+| 3 | `abl_ep20_upgraded_dv2ep104_fold3` | ⏳ queued | ⏳ queued | 🔄 running (ep48/150) -- best so far 0.0612 @ ep36, no new best since |
+| 4 | `abl_ep20_upgraded_dv2ep104_fold4` | ⏳ queued | ⏳ queued | 🔄 running (ep48/150) -- best so far 0.0830 @ ep32, weakest fold so far (MRE ~30px vs ~23-24px elsewhere) |
+| **mean** | | ⏳ pending | ⏳ pending | 3/5 folds complete |
 
-Early read: fold 2 is already ahead of both finished folds on blend (0.0651 vs 0.0680/0.0763),
-so this HRNet-decoder recipe may be competitive with or better than the simple-decoder champion
-recipe (§3b mean ≈0.0740) on matched NEW-ep104 SSL -- but per the §3/§3b spread (±13-30%),
-no fold-0-or-partial number here should be trusted over the eventual 5-fold mean.
+Early read (3/5 done): fold 2 (0.0648) is the best single fold of the sweep, ahead of folds
+0/1 (0.0763/0.0680) -- so this HRNet-decoder recipe looks competitive with or better than the
+simple-decoder champion recipe (§3b mean ≈0.0740) on matched NEW-ep104 SSL. But fold 4 is
+tracking noticeably worse (0.0830 so far, MRE ~30px vs ~23-24px on every other fold) -- the same
+kind of fold-to-fold spread seen in §3/§3b (±13-30%), so no partial number here, including fold 2's
+strong result, should be trusted over the eventual 5-fold mean once folds 3-4 finish.
 
 ---
 
