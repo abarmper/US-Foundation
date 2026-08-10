@@ -60,7 +60,7 @@ Archimedes Research Unit, Athena Research Center, Athens, Greece}
 \maketitle
 
 \begin{abstract}
-Accurate ultrasound biometry relies on precise anatomical landmark localization, yet building a unified model across heterogeneous ultrasound tasks remains challenging. Image appearance, acquisition protocols, and anatomical scale vary substantially across clinical domains, exacerbated by the severe scarcity of large-scale annotated datasets. To address the Generalization-oriented Ultrasound Biometry Challenge, we propose a two-stage foundation-model pipeline for generalizable multi-task landmark detection across nine diverse clinical tasks. Rather than treating each task as an isolated problem, we formulate biometry as cross-domain representation learning under limited keypoint supervision and distribution shift. First, a DINOv2 encoder is adapted on unlabeled ultrasound frames via DINO-style multi-crop self-distillation between a trainable student and an EMA teacher, capturing domain-specific sonographic textures without eroding the foundation model's semantic priors. Second, the adapted encoder is coupled with a domain-agnostic, HRNet-style multi-resolution neck designed to reconstruct localization-relevant spatial hierarchies directly from transformer patch features. Task-specific convolutional heads then utilize soft-argmax for direct, sub-pixel coordinate regression. {\color{blue}On the official GU\_Biometry Codabench evaluation, the resulting pipeline achieves an overall mean radial error (MRE) of 35.03\,px and measurement error (MAE) of 34.62\,px across all nine tasks.}
+Accurate ultrasound biometry relies on precise anatomical landmark localization, yet building a unified model across heterogeneous ultrasound tasks remains challenging. Image appearance, acquisition protocols, and anatomical scale vary substantially across clinical domains, exacerbated by the severe scarcity of large-scale annotated datasets. To address the Generalization-oriented Ultrasound Biometry Challenge, we propose a two-stage foundation-model pipeline for generalizable multi-task landmark detection across nine diverse clinical tasks. Rather than treating each task as an isolated problem, we formulate biometry as cross-domain representation learning under limited keypoint supervision and distribution shift. First, a DINOv2 encoder is adapted to unlabeled ultrasound through multi-crop self-distillation combining CLS-level DINO supervision, masked patch-token prediction, and KoLeo regularization under an EMA teacher, capturing domain-specific sonographic textures. Second, the adapted encoder is coupled with a domain-agnostic, HRNet-style multi-resolution neck designed to reconstruct localization-relevant spatial hierarchies directly from transformer patch features. Task-specific convolutional heads then utilize soft-argmax for direct, sub-pixel coordinate regression. {\color{blue}On the official evaluation, our pipeline achieves an overall MRE of 35.03\,px and MAE of 34.62\,px across all nine tasks.}
 
 \keywords{Ultrasound biometry \and Self-supervised learning \and DINOv2 \and
 Landmark localization \and HRNet.}
@@ -74,14 +74,14 @@ Foundation models have advanced medical image analysis through reusable represen
 
 Landmark-based biometry requires global context alongside fine spatial precision. Vision Transformers extract robust features~\cite{dosovitskiy2021image,oquab2023dinov2} and have been adapted for keypoints (e.g., TransPose~\cite{yang2021transpose}, ViTPose~\cite{xu2022vitpose}). However, their coarse tokenization reduces native spatial resolution, making precise coordinate localization more challenging; even hierarchical variants such as Swin~\cite{liu2021swin} rely on progressive downsampling. We therefore pair foundation model features with a High-Resolution Network (HRNet)-style multi-resolution neck~\cite{sun2019hrnet}, preferred over standard U-Net architectures to maintain continuous high-resolution spatial detail throughout the network, critical for fine coordinate estimation.
 
-Our main contributions are: (i) a two-stage DINOv2-HRNet pipeline that separates domain-level ultrasound representation learning from task-specific spatial localization; (ii) a study of how unlabeled self-supervised learning (SSL) adaptation duration affects downstream landmark accuracy; (iii) a metric-aligned validation strategy that selects checkpoints on the challenge's macro-averaged, per-task-normalized objective.
+Our main contributions are: (i) a two-stage DINOv2-HRNet pipeline that separates domain-level ultrasound representation learning from task-specific spatial localization; (ii) a study of how unlabeled self-supervised learning (SSL) adaptation duration affects downstream landmark accuracy; (iii) an internal macro-averaged, per-task-normalized validation strategy for checkpoint selection across heterogeneous tasks.
 
 \section{Methodology}
 
 \begin{figure}[tb]
 \centering
 \includegraphics[width=\textwidth]{figures/Phase1_rev_v2.pdf}
-\caption{{\color{blue}Phase 1: self-supervised domain adaptation. A trainable student and an EMA teacher (register-variant DINOv2-L/14) process asymmetric multi-crop views: 2 global crops reach both networks, while 6 additional local crops reach the student only. Two parallel branches run per network: DINO (CLS self-distillation) and iBOT (masked-patch prediction, global views only, $\leq$50\% of patch tokens masked); a KoLeo spread regularizer additionally acts on the student's global CLS embeddings alone. Teacher targets are centered and sharpened under stop-gradient; the combined loss $\mathcal{L}=\mathcal{L}_{\text{dino}}+\mathcal{L}_{\text{ibot}}+0.1\mathcal{L}_{\text{koleo}}$ backpropagates into the student only, while the teacher's parameters are updated solely via EMA of the student's. The student's encoder is periodically checkpointed; Phase 2 later taps four of its intermediate depths.}}
+\caption{{\color{blue}Phase 1 self-supervised domain adaptation.}}
 \label{fig:pipeline}
 \end{figure}
 
@@ -89,9 +89,9 @@ Our main contributions are: (i) a two-stage DINOv2-HRNet pipeline that separates
 \label{sec:phase1}
 
 {\color{blue}
-We adapt the register-variant DINOv2-L/14 encoder~\cite{oquab2023dinov2} to unlabeled ultrasound frames with a DINOv2-faithful continued-pretraining recipe, combining CLS-token self-distillation~\cite{caron2021dino}, masked patch-token prediction~\cite{zhou2022ibot}, and an entropic spread regularizer~\cite{sablayrolles2018spreading}. As before, a local-to-global multi-crop strategy generates eight augmented views: two \emph{global} crops (32--100\% of the image area) and six \emph{local} crops (5--32\% of the area, $98\times98$), all pre-restricted to the ultrasound fan's foreground bounding box and resampled if a local crop lands mostly on background, so crops are not wasted on the uninformative black border common to sonographic frames. A trainable student processes all eight views; an exponential-moving-average (EMA) teacher, held in evaluation mode, processes only the two global views.
+We adapt the register-variant DINOv2-L/14 encoder~\cite{oquab2023dinov2} to unlabeled ultrasound frames with a continued-pretraining recipe that follows DINOv2's original SSL formulation, combining CLS-token self-distillation~\cite{caron2021dino}, masked patch-token prediction~\cite{zhou2022ibot}, and an entropic spread regularizer~\cite{sablayrolles2018spreading}. A local-to-global multi-crop strategy generates eight augmented views: two \emph{global} crops ($224\times224$) and six \emph{local} crops ($98\times98$). A trainable student processes all eight views; an exponential-moving-average (EMA) teacher processes only the two global views.
 
-The DINO branch projects the CLS token through a three-layer MLP head, an $L_2$-normalized bottleneck, and a weight-normalized final layer~\cite{oquab2023dinov2} into $K{=}65{,}536$ prototypes; the iBOT branch applies an architecturally identical head, separately parameterized, to patch-token representations from the global views. The teacher's logits are centered against a running EMA estimate and sharpened at a warmup teacher temperature (annealed $0.04\rightarrow0.07$ over the first 30 epochs); the student's are temperature-scaled and log-softmaxed---the same centering-and-sharpening mechanism as standard DINO self-distillation~\cite{caron2021dino}, now applied independently to two prediction heads (CLS-level and patch-level) rather than one. In addition to the CLS-level loss $\mathcal{L}_{\mathrm{dino}}$, a block-wise subset of the student's global-crop patch tokens is masked (capped at 50\% of tokens, restricted to foreground/tissue patches) and passed through a second, separately weight-normalized head; the student must recover the teacher's (unmasked, centered, sharpened) representation for each masked patch, giving a dense, patch-level loss:
+The DINO branch projects the CLS token through a projection head~\cite{oquab2023dinov2} into $K$ prototypes; the iBOT branch applies an architecturally identical head, separately parameterized, to patch-token representations from the global views. The teacher's logits are centered and sharpened before distillation, following standard DINO self-distillation~\cite{caron2021dino}, now applied independently to both the CLS-level and patch-level heads. In addition to the CLS-level loss $\mathcal{L}_{\mathrm{dino}}$, a block-wise, foreground-restricted subset of the student's global-crop patch tokens is masked and passed through a second head; the student must recover the teacher's representation for each masked patch, giving a dense, patch-level loss:
 \begin{equation}
 \mathcal{L}_{\mathrm{ibot}} = -\frac{1}{|\mathcal{M}|}\sum_{m\in\mathcal{M}} q_m \log p_m ,
 \label{eq:ibot-loss}
@@ -102,28 +102,25 @@ where $\mathcal{M}$ is the set of masked foreground patches across the two globa
 \label{eq:dino-combined}
 \end{equation}
 
-The teacher receives no gradient and is updated as $\theta_t \leftarrow m\,\theta_t + (1-m)\,\theta_s$, with $m$ annealed from $0.994$ to $1.0$ on a cosine schedule; the projection heads' final layer is additionally frozen (zero learning rate) for the first epoch, a standard stabilization measure against early prototype collapse. Gradient accumulation maintains a large effective batch size of 256 throughout. Pretraining follows a two-resolution curriculum: the bulk of training runs at a low $224\times224$ global-crop resolution (five-fold cheaper per step than $518\times518$), followed by a short high-resolution adaptation tail at $518\times518$---the resolution used by Phase 2---with a compressed warmup-and-cosine restart of all schedules, so the encoder's features are finally tuned at the deployment scale rather than only at the cheap pretraining scale.
+The teacher receives no gradient and is updated via an exponential moving average of the student. Pretraining follows a two-resolution curriculum: the bulk of training runs at a low $224\times224$ global-crop resolution, followed by a short high-resolution adaptation tail at $518\times518$---the resolution used by Phase 2---so the encoder's features are finally tuned at the deployment scale rather than only at the cheap pretraining scale. We use $K{=}65{,}536$ prototypes, anneal the teacher temperature from $0.04$ to $0.07$ over the first 30 epochs, freeze the final projection layer during the first epoch, and maintain an effective batch size of 256 through gradient accumulation.
 }
 
 \subsection{Phase 2: Multi-Stage HRNet Neck}
 \label{sec:phase2}
-To recover fine spatial resolution from the coarse $37\times37$ transformer tokens, we implement a multi-stage HRNet-style neck: parallel, multi-resolution branches that repeatedly exchange information bidirectionally, rather than being computed independently and fused only once (Figure~\ref{fig:neck-zoom}).
+To recover fine spatial resolution from the coarse $37\times37$ transformer tokens, we implement a multi-stage HRNet-style neck: parallel, multi-resolution branches that repeatedly exchange information bidirectionally (Figure~\ref{fig:neck-zoom}).
 
 \begin{figure}[tb]
 \centering
-\includegraphics[width=\textwidth]{FIGURE2_UPDATED-Page-5.drawio.pdf}
+\includegraphics[width=\textwidth]{figures/Phase2_rev.pdf}
 %\caption{Detailed view of Phase 2 (expanding the "Neck" and "Regression" black boxes of Fig.~\ref{fig:pipeline}): branch spawning, the two exchange units, and the final multi-scale fusion into a $148\times148$, 128-channel representation, followed by task routing, the nine task-specific heads, and soft-argmax coordinate decoding.}
-\caption{Detailed Phase~2 architecture: HRNet-style branch spawning and exchange, multi-scale fusion into a $148\times148$, 128-channel feature map, task routing, task-specific heads, and soft-argmax coordinate decoding.}
+\caption{Phase~2 architecture: HRNet-style branch spawning and exchange, fusion into a $148\times148$, 128-channel map, task-routed heads, and soft-argmax decoding.}
 \label{fig:neck-zoom}
 \end{figure}
 
-Given a $518\times518$ input, the adapted register-variant DINOv2-L/14 encoder outputs, at every one of its 24 transformer blocks, a $37\times37$ grid of 1024-dimensional patch tokens (matching the encoder's 14-pixel patch stride); spatial resolution is constant with depth, only token semantics change. We tap four intermediate depths---blocks 5, 11, 17, and 23---and route each $37\times37\times1024$ grid directly into the neck's branch-spawning convolutions, which perform channel compression and spatial projection simultaneously without a dedicated $1\times1$ bottleneck.
-Unlike standard HRNet designs, which build multi-resolution features bottom-up from image-space representations, our neck operates top-down from these already-semantic $37\times37$ DINOv2 token grids: higher-resolution branches are expanded outward from coarse features rather than obtained by progressive downsampling. Concretely, $B_1$ ($37\times37$) and $B_2$ ($74\times74$) are spawned directly and simultaneously from the two deepest taps---block 23 and block 17, respectively---via independent convolutional and transposed-convolutional projections, followed by an initial bidirectional exchange. $B_3$ ($148\times148$) is instead bootstrapped independently from the two shallowest taps (blocks 11 and 5), each projected through its own two-stage transposed-convolution stack and summed---rather than derived from $B_2$---after which all three branches participate in a dense all-pairs exchange.
-Downsampling paths use chained stride-2 $3\times3$ convolutions with GroupNorm: a single stride-2 step for a $2\times$ resolution gap and two chained steps for a $4\times$ gap, avoiding a single stride-4 projection. Each upsampling path uses a $1\times1$ channel projection followed by bilinear interpolation. Each branch is updated by summing its own features with the resampled projections of the other branch(es), followed by ReLU: the two-branch exchange updates $b_1$ and $b_2$ this way, and the three-branch, all-pairs exchange applies the analogous update to each of $b_1$, $b_2$, and $b_3$. This bidirectional exchange serves a concrete purpose for ultrasound, since the coarse-to-fine path gives the high-resolution branches a semantic anchor so fine-detail detection is less likely to latch onto speckle noise or acoustic shadowing as if it were a real edge, while the fine-to-coarse path feeds sharp structural boundaries back to the coarse branch, preventing its semantic map from becoming under-localized.
-Because training batches are task-homogeneous, BatchNorm's running statistics would become an average blended across all nine heterogeneous task distributions, poorly matching any single task's features at inference. We therefore use GroupNorm throughout the neck and task heads, since it normalizes per sample and does not depend on the other images in the batch.
+Given a $518\times518$ input, the adapted register-variant DINOv2-L/14 encoder outputs, at every one of its 24 transformer blocks, a $37\times37$ grid of 1024-dimensional patch tokens. We tap four intermediate depths---blocks 5, 11, 17, and 23---and route them into three branches at $37\times37$/128ch, $74\times74$/96ch, and $148\times148$/64ch, respectively. Two exchange stages follow---first between the two coarser branches, then a dense all-pairs exchange across all three---using stride-2 convolution downsampling, $1\times1$-projection-plus-bilinear-interpolation upsampling, and GroupNorm throughout (chosen over BatchNorm since training batches are task-homogeneous, so BatchNorm statistics would blend across nine heterogeneous task distributions). The three branches are finally fused into a common $148\times148$, 128-channel representation.
 
 \subsection{Task-Specific Heads and Coordinate Extraction}
-After the final exchange, all branches are aligned to a common $148\times148$, 128-channel representation: $B_1$ and $B_2$ are projected and bilinearly upsampled, while $B_3$ is channel-projected only; the three are then fused by element-wise summation. Each task-homogeneous batch is then dispatched, by its (sampler-guaranteed) task identity rather than a learned routing mechanism, to one of nine independent task-specific heads. Each head applies two Conv-GroupNorm-ReLU blocks with 2D dropout to the fused $148\times148$ representation, and produces per-keypoint logits $\ell_k$ via a final $1\times1$ projection.
+Each task-homogeneous batch is routed by its sampler-provided task identity to one of nine independent task-specific heads. Each head applies two Conv-GroupNorm-ReLU blocks with 2D dropout and predicts per-keypoint logits $\ell_k$ through a final $1\times1$ projection.
 
 Coordinates are then extracted via soft-argmax, a temperature-scaled softmax over the flattened logits treated as a differentiable spatial expectation~\cite{nibali2018numerical}:
 \begin{equation}
@@ -131,7 +128,7 @@ p_k = \text{softmax}(\tau \cdot \ell_k), \qquad
 (\hat{x}_k, \hat{y}_k) = \Big(\sum_{(u,v)} p_k(u,v)\, u,\ \sum_{(u,v)} p_k(u,v)\, v\Big) \cdot \frac{518}{H},
 \label{eq:softargmax}
 \end{equation}
-with temperature $\tau=10.0$ and $H$ the logit resolution ($148$). At inference these canvas-space coordinates are inverse-letterboxed back to original-image pixels---the space the official challenge metric is computed in---so validation, checkpoint selection, and reporting all optimize the real objective rather than a canvas-space proxy. The model is trained with a masked $L_1$ loss, reweighted per sample by that image's own letterbox scale factor ($\max(h,w)/\text{canvas}$) so residuals are measured in original-pixel units matching the metric's scale, over the visible keypoints $\mathcal{K}$ of the current task, plus a light differentiable spatial-to-numerical transform (DSNT)-style regularizer~\cite{nibali2018numerical} that keeps each predicted heatmap tight and unimodal without reintroducing a fixed heatmap-matching target. Unlike direct fully-connected regression, which discards spatial feature maps, or standard heatmap matching, which suffers from argmax quantization errors, soft-argmax yields continuous, sub-pixel coordinates directly from the probability map. This entirely avoids the need for empirical tuning of target-heatmap Gaussian scales.
+with temperature $\tau=10.0$ and $H$ the logit resolution ($148$). At inference, predictions are inverse-letterboxed to original-image pixels, matching the coordinate space used for validation and official evaluation. Training uses a masked $L_1$ loss, reweighted by each image's letterbox scale factor so residuals are measured in original-pixel units matching the metric's scale, together with a light DSNT-style regularizer~\cite{nibali2018numerical}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -142,7 +139,7 @@ We evaluate on the GU\_Biometry MICCAI 2026 Challenge dataset~\cite{gu_biometry,
 Native image sizes vary substantially across tasks (e.g., median $336\times544$ for FUGC to $768\times1024$ for FA); to preserve landmark geometry for the DINOv2 encoder, all images undergo an aspect-ratio-preserving resize and zero-padding to a $518\times518$ canvas, followed by ImageNet pixel normalization. On top of this base preprocessing, Phase~2 supervised training applies moderate augmentation (affine scale up to $\pm5\%$, translation up to $\pm10\%$, rotation up to $\pm30^\circ$, brightness/contrast $\pm0.2$, a gamma-or-CLAHE choice, and light Gaussian noise), {\color{blue}Phase~1 unlabeled adaptation applies an ultrasound-aware recipe (\texttt{us\_v2}): images are pre-cropped to the ultrasound fan's foreground bounding box, global crops receive gentle $\pm10^\circ$ rotation (local crops none), and both receive a randomized brightness/contrast, gamma, or CLAHE choice plus Gaussian blur or noise, with background-heavy local crops resampled by foreground texture} to encourage robustness to acquisition variability, and validation and inference use only the base preprocessing, with no augmentation.
 
 \subsection{Implementation Details}
-All experiments were executed on a single NVIDIA A100-SXM4-80GB GPU with a batch size of 64. Training uses bf16 mixed precision with gradient-norm clipping and AdamW (weight decay excluded on norm/bias parameters, dimensionality $<2$; base LR $2\times10^{-4}$, 15-epoch linear warmup, 150-epoch cosine decay). The backbone uses layer-wise learning rate decay (LLRD, factor $0.75$), starting at $0.1\times$ base LR for the last four unfrozen blocks. A Phase~2 EMA teacher ($\alpha=0.999$) is maintained for stabilized validation, early stopping (patience 40), and final inference. A temperature-scaled ($\tau=0.5$) task-homogeneous sampler allocates per-task batches in proportion to (task size)$^{0.5}$, damping AoP's $\sim$40$\times$ raw imbalance over the smallest cardiac tasks to a $\sim$6$\times$ replay-rate gap. Checkpoint selection directly optimizes a macro-averaged, per-task-normalized blend of landmark and clinical-measurement error in original-pixel space, mirroring the official challenge scoring; final reported results use the same native-resolution metric, evaluated by the official Codabench server.
+All experiments were executed on a single NVIDIA A100-SXM4-80GB GPU with a batch size of 64. Training uses bf16 mixed precision with gradient-norm clipping and AdamW (weight decay excluded on norm/bias parameters, dimensionality $<2$; base LR $2\times10^{-4}$, 15-epoch linear warmup, 150-epoch cosine decay). The backbone uses layer-wise learning rate decay (LLRD, factor $0.75$), starting at $0.1\times$ base LR for the last four unfrozen blocks. A Phase~2 EMA teacher ($\alpha=0.999$) is maintained for stabilized validation, early stopping (patience 40), and final inference. A temperature-scaled ($\tau=0.5$) task-homogeneous sampler allocates per-task batches in proportion to (task size)$^{0.5}$, damping AoP's $\sim$40$\times$ raw imbalance over the smallest cardiac tasks to a $\sim$6$\times$ replay-rate gap. Checkpoint selection uses an internal macro-averaged, per-task-normalized development criterion combining landmark and clinical-measurement error in original-pixel space, which we refer to below as the \emph{blend} score (lower is better); it is an internal proxy for model selection only, distinct from the official Codabench MRE/MAE actually reported in Table~1, since its per-task normalizer is not the official challenge normalizer. {\color{blue}Phase~1 (351.7M parameters, fully trained) runs at 64.4~img/s (224px bulk) and 15.9~img/s (518px tail), $\sim$96 GPU-hours in total; Phase~2 (312.2M parameters, 58.2M trainable) trains at 84.4~img/s and infers at up to 127.3~img/s under bf16 autocast.}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -220,7 +217,8 @@ in Tables~\ref{tab:phase1-phase2} and~\ref{tab:codabench-results}. All probe
 results reported here are based on the internal fold-0 validation split.
 
 Figure~\ref{fig:ssl-duration} sweeps SSL duration under this protocol against
-an off-the-shelf, non-adapted DINOv2 control. Representation quality is
+an off-the-shelf, non-adapted DINOv2 control (blend 0.0890, MRE 31.27~px).
+Representation quality is
 \textbf{non-monotonic} in adaptation duration (panel a). Among bulk-only
 checkpoints, ep20 achieves the lowest MRE (24.70~px); extending adaptation
 to ep60 or ep100 does not provide further improvement (26.43 and 25.95~px,
@@ -243,8 +241,7 @@ corresponds to the complete 224-to-518-pixel resolution curriculum; we
 therefore use ep104 as the final Phase-1 initialization. A task-wise
 analysis further shows that the preferred adaptation duration is task
 dependent, with per-task optima spanning ep20--ep104, while ep104 remains
-within 8\% MRE of the task-specific optimum for eight of nine tasks
-(Supplementary Table~S1). Table~\ref{tab:ssl-duration} reports the full sweep.
+within 8\% MRE of the task-specific optimum for eight of nine tasks.
 }
 
 \begin{figure}[tb]
@@ -263,43 +260,13 @@ off-the-shelf, non-adapted DINOv2 baseline.}
 \label{fig:ssl-duration}
 \end{figure}
 
-\begin{table}[tb]
-\caption{\color{blue}Frozen-probe SSL-duration sweep (fold-0 internal
-validation). Challenge-blend selection metric and mean radial error (MRE, px).}
-\label{tab:ssl-duration}
-\centering
-\begin{tabular}{@{}llcc@{}}
-\toprule
-Segment & Encoder / SSL duration & blend $\downarrow$ & MRE (px) $\downarrow$ \\
-\midrule
---- & No SSL (off-the-shelf DINOv2) & 0.0890 & 31.27 \\
-\multirow{7}{*}{224px bulk + tail}
- & SSL, 10 ep (bulk only) & 0.0872 & 26.88 \\
- & SSL, 20 ep (bulk only) & 0.0782 & 24.70 \\
- & SSL, 60 ep (bulk only) & 0.0836 & 26.43 \\
- & SSL, 60 ep + 5-ep 518px tail & 0.0748 & 25.23 \\
- & SSL, 60 ep + 10-ep 518px tail & 0.0755 & 25.50 \\
- & SSL, 100 ep (bulk only) & 0.0974 & 25.95 \\
- & SSL, 100 ep + 4-ep 518px tail & \textbf{0.0747} & 25.09 \\
-\multirow{3}{*}{518px full-res}
- & SSL, 10 ep & 0.0929 & 25.79 \\
- & SSL, 20 ep & 0.0901 & 25.96 \\
- & SSL, 30 ep & 0.0934 & 26.92 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
 {\color{blue}
-Under the same probe protocol, we also checked whether the register-variant
-backbone matters, by swapping only \texttt{model.backbone.name} to the
-non-register DINOv2-L/14 variant (no SSL adaptation, matched fold-0 split).
-The result is mixed rather than a clean win: the register variant scores
-better on blend (0.0890 vs.\ 0.0976) but worse on MRE (31.27 vs.\
-29.34~px). We retain the register variant on the strength of its reported
-architectural benefit---register tokens absorb the high-norm ``artifact''
-patch tokens that otherwise contaminate dense feature maps~\cite{darcet2024registers},
-which matters for a neck that consumes every patch token---rather than
-treating this single probe comparison as decisive either way.
+A matched frozen-probe comparison yielded mixed results: registers improved
+the blend score (0.0890 vs.\ 0.0976), whereas the standard backbone achieved
+a lower MRE (29.34 vs.\ 31.27~px). We therefore retain registers based
+primarily on their reported ability to suppress high-norm artifact tokens in
+intermediate ViT features~\cite{darcet2024registers}, which is relevant
+because our neck directly consumes dense patch representations.
 }
 
 To select the Phase-1 adaptation duration used for all subsequent experiments, we compare the epoch-10 and epoch-20 checkpoints as Phase-2 initializations, training the baseline Phase-2 recipe on fold~0 and scoring on that fold's held-out validation split with our local challenge-metric scorer (Section~\ref{sec:phase2}). {\color{blue}This comparison predates the iBOT/KoLeo recipe of Section~\ref{sec:phase1} and uses the earlier CLS-only multi-crop self-distillation it superseded, and full fine-tuning (unlike the probe above) largely compresses the gap between checkpoints;} Table~\ref{tab:phase1-phase2} reports the results: the epoch-20 checkpoint performs better across all metrics and is the Phase-1 initialization used for the final model. Qualitative PCA of patch-token feature maps are shown in Figure~\ref{fig:feature-maps}.
@@ -320,20 +287,9 @@ Mean AvgMAE & 25.33 & \textbf{23.37} & Mean AvgMAE & 25.33 & \textbf{22.52} \\
 
 \begin{figure}[tb]
 \centering
-\includegraphics[width=\textwidth]{fig3_variant_seed1.pdf}
-\caption{Original ultrasound frames and their corresponding DINOv2 patch-token PCA feature maps at the epoch-10 and epoch-20.}
-\label{fig:feature-maps}
-\end{figure}
-
-% CANDIDATE REPLACEMENT for the figure above -- uses the NEW DINOv2-faithful SSL
-% checkpoints (ep10/ep60/ep104) that Section~\ref{sec:phase1} now actually describes,
-% instead of the legacy multicrop ep10/ep20 checkpoints shown above. Placed here for
-% side-by-side comparison; decide whether to keep both, replace, or drop one.
-\begin{figure}[tb]
-\centering
 \includegraphics[width=\textwidth]{fig4_variant_seed3.pdf}
-\caption{{\color{blue}Candidate replacement for Figure~\ref{fig:feature-maps}: original ultrasound frames and their corresponding DINOv2 patch-token PCA feature maps at epoch-10, epoch-60, and epoch-104 of the DINOv2-faithful SSL recipe (Section~\ref{sec:phase1})---the encoder actually described there, unlike Figure~\ref{fig:feature-maps} above, which still shows the superseded legacy multicrop checkpoints.}}
-\label{fig:feature-maps-new}
+\caption{{\color{blue}Representative PCA visualizations of DINOv2 patch-token features during ultrasound-domain adaptation, at epoch-10, epoch-60, and epoch-104 of the SSL recipe described in Section~\ref{sec:phase1}.}}
+\label{fig:feature-maps}
 \end{figure}
 
 \subsection{Phase-2 Recipe Selection}

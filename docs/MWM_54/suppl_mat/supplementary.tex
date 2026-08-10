@@ -1,6 +1,7 @@
 % supplementary.tex -- Supplementary material for "Self-Supervised Domain
 % Adaptation with DINOv2-HRNet for Multi-Task Ultrasound Landmark Detection".
-% Same llncs.cls skeleton as main.tex, kept minimal (Table S1 only for now).
+% Same llncs.cls skeleton as main.tex. Table S1: complete SSL-duration sweep
+% (moved out of main.tex Table 2 for space). Table S2: per-task breakdown.
 %
 % Compile with pdflatex, e.g.:
 %   pdflatex supplementary && pdflatex supplementary
@@ -10,6 +11,7 @@
 \usepackage[T1]{fontenc}
 \usepackage{microtype}
 \usepackage{booktabs}
+\usepackage{multirow}
 
 \begin{document}
 
@@ -33,14 +35,50 @@ Archimedes Research Unit, Athena Research Center, Athens, Greece}
 {\Large\bfseries Supplementary Material}
 \end{center}
 
-\section*{S1. Task-Specific Sensitivity to Phase-1 Adaptation Duration}
+\renewcommand{\thetable}{S\arabic{table}}
+
+\section*{S1. Complete Phase-1 Adaptation-Duration Sweep}
+
+Section~4.2 of the main paper (Figure~4) reports the frozen-probe
+adaptation-duration sweep, macro-averaged over all nine tasks; the text
+states the key values (no-SSL baseline, the ep20 bulk-only peak, and the
+selected ep104 checkpoint). Table~S1 below reports the complete sweep,
+including the intermediate tail-length and full-resolution variants omitted
+from the main text for space.
+
+\begin{table}[h]
+\caption{Frozen-probe SSL-duration sweep (fold-0 internal validation).
+Challenge-blend selection metric and mean radial error (MRE, px).}
+\label{tab:supp-ssl-sweep}
+\centering
+\begin{tabular}{@{}llcc@{}}
+\toprule
+Segment & Encoder / SSL duration & blend $\downarrow$ & MRE (px) $\downarrow$ \\
+\midrule
+--- & No SSL (off-the-shelf DINOv2) & 0.0890 & 31.27 \\
+\multirow{7}{*}{224px bulk + tail}
+ & SSL, 10 ep (bulk only) & 0.0872 & 26.88 \\
+ & SSL, 20 ep (bulk only) & 0.0782 & 24.70 \\
+ & SSL, 60 ep (bulk only) & 0.0836 & 26.43 \\
+ & SSL, 60 ep + 5-ep 518px tail & 0.0748 & 25.23 \\
+ & SSL, 60 ep + 10-ep 518px tail & 0.0755 & 25.50 \\
+ & SSL, 100 ep (bulk only) & 0.0974 & 25.95 \\
+ & SSL, 100 ep + 4-ep 518px tail & \textbf{0.0747} & 25.09 \\
+\multirow{3}{*}{518px full-res}
+ & SSL, 10 ep & 0.0929 & 25.79 \\
+ & SSL, 20 ep & 0.0901 & 25.96 \\
+ & SSL, 30 ep & 0.0934 & 26.92 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section*{S2. Task-Specific Sensitivity to Phase-1 Adaptation Duration}
 
 Section~4.2 of the main paper reports frozen-encoder probe results
-macro-averaged over all nine tasks (Table~2). Here we report the same
+macro-averaged over all nine tasks (Table~S1 above). Here we report the same
 frozen-probe checkpoints broken down per task, to check whether the
 preferred Phase-1 adaptation duration is uniform across tasks.
 
-\renewcommand{\thetable}{S\arabic{table}}
 \begin{table}[h]
 \caption{Task-specific sensitivity to Phase-1 adaptation duration. For each
 task, the best-scoring frozen-probe checkpoint (mean radial error, MRE, orig.\
@@ -72,5 +110,39 @@ The larger deviation for IVC should be interpreted cautiously given the
 small sample size of this task. Adaptation-duration preference is thus task
 dependent, but ep104 provides a reasonable single shared checkpoint for the
 multi-task setting.
+
+\section*{S3. Compute Cost, Throughput, and Memory Footprint}
+
+Full breakdown behind the headline numbers in Section~3.2 of the main paper.
+All figures measured on a single NVIDIA A100-SXM4-80GB GPU.
+
+\begin{table}[h]
+\caption{Parameter counts, throughput, and peak memory for both training
+phases. Phase-1 GFLOPs are per optimization step (with gradient
+accumulation); Phase-2 GFLOPs are per forward pass at batch size 1.}
+\label{tab:supp-compute}
+\centering
+\begin{tabular}{@{}llccc@{}}
+\toprule
+Stage & Configuration & Throughput & Peak memory & GFLOPs \\
+\midrule
+Phase 1 & 224px bulk (bs32$\times$8 accum) & 64.4 img/s & 33.16 GB & 27{,}641 / step \\
+Phase 1 & 518px tail (bs16$\times$16 accum) & 15.9 img/s & 55.03 GB & 68{,}579 / step \\
+Phase 2 & Training, bf16 (bs64) & 84.4 img/s & 29.24 GB & 1051.8 / fwd \\
+Phase 2 & Inference, fp32 (bs64) & 17.8 img/s & 6.06 GB & --- \\
+Phase 2 & Inference, bf16 (bs64) & 127.3 img/s & 5.65 GB & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Phase 1 trains the full encoder (351.7M parameters, all trainable) over
+191K unlabeled frames; the complete 100-bulk+4-tail schedule totals
+$\sim$96 GPU-hours, making Phase 1 the more expensive stage overall despite
+Phase 2's larger per-step batch throughput. Phase 2 has 312.2M parameters
+(58.2M trainable: the last four unfrozen encoder blocks, neck, and nine task
+heads). Inference currently runs in fp32 (the precision used by
+\texttt{predict.py}/\texttt{evaluate.py} at submission time); bf16 autocast
+inference is $\sim$7$\times$ faster at lower memory and is a straightforward
+future optimization, not yet enabled in the submitted pipeline.
 
 \end{document}
