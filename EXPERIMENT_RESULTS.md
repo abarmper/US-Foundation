@@ -37,7 +37,7 @@ Sorted by `challenge_blend`. All fold 0, unfreeze 4, 150 ep.
 | `abl_nossl_fold0` | none | simple | single | hrnet | 0.0 | 0.0740 | 28.98 | ✅ done |
 | `phase2_simple_dv2ep20` | **NEW** ep20 | simple | single | hrnet | 0.0 | 0.0791 | 28.85 | ✅ done |
 | `abl_ep20_upgraded_dv2ep20` | **NEW** ep20 | upgraded | multilevel | hrnet | 0.5 | 0.0842 | 26.70 | ✅ done |
-| `abl_ep20_upgraded_dv2ep104` | **NEW** ep104 (224 bulk + 518 tail) | upgraded | multilevel | hrnet | 0.5 | ⏳ queued | ⏳ queued | ⏳ queued — fills the missing HRNet+multilevel+NEW-ep104 cell in the decoder ablation grid |
+| `abl_ep20_upgraded_dv2ep104` | **NEW** ep104 (224 bulk + 518 tail) | upgraded | multilevel | hrnet | 0.5 | 0.0763 | 27.37 | ✅ done (fold 0 only here -- see §3c for the full 5-fold sweep, in progress) |
 | `abl_ep20_upgraded` | old ep20 | upgraded | multilevel | hrnet | 0.5 | 0.0946 | 31.41 | ✅ done |
 | `phase2_baseline_fold0_ssl20` | old ep20 | simple | single | hrnet | 0.0 | 0.0973 | 33.95 | ✅ done |
 | `phase2_upgraded_fold0` | old ep10 | upgraded | multilevel | hrnet | 0.5 | 0.1006 | 31.12 | ✅ done |
@@ -149,6 +149,32 @@ came from a much shorter effective training run than the others.
 Fold 2, still running, is already the best single-fold result in the project (0.0665 <
 the fold-0 champion's 0.0696) — same leaky-split caveat applies (finding #18): comparable
 internally, not proof of anything vs. Codabench.
+
+---
+
+## 3c. 5-fold CV -- upgraded recipe (HRNet decoder, multilevel), NEW ep104 SSL (in progress)
+
+Upgraded recipe (multilevel neck, HRNet decoder, unfreeze 4, 150 ep, sample_temp 0.5),
+NEW `ep104` encoder (224 bulk + 518 tail) -- fills the missing HRNet+multilevel+NEW-ep104
+cell in the decoder ablation grid (see §1) across all 5 folds, matched-pair against
+§3 (same recipe, old ep20 SSL) and §3b (same NEW ep104 SSL, simple decoder instead of
+HRNet). All 5 folds launched back-to-back on 2 GPUs via an auto-chain (fold N+2 starts
+the moment fold N finishes); placeholders below are live and will be filled as each
+fold's early-stopping/150-epoch run completes.
+
+| Fold | Run | blend ↓ | MRE | status |
+|---|---|---|---|---|
+| 0 | `abl_ep20_upgraded_dv2ep104` | 0.0763 | 27.37 | ✅ done (early-stopped ep47, best ep7) |
+| 1 | `abl_ep20_upgraded_dv2ep104_fold1` | 0.0680 | 24.25 | ✅ done (early-stopped ep56, best ep16) |
+| 2 | `abl_ep20_upgraded_dv2ep104_fold2` | ⏳ queued | ⏳ queued | 🔄 running -- best so far 0.0651 @ ep16 |
+| 3 | `abl_ep20_upgraded_dv2ep104_fold3` | ⏳ queued | ⏳ queued | 🔄 running -- best so far 0.0689 @ ep10, still improving |
+| 4 | `abl_ep20_upgraded_dv2ep104_fold4` | ⏳ queued | ⏳ queued | 🔄 running -- best so far 0.0916 @ ep9, noisier than the other folds |
+| **mean** | | ⏳ pending | ⏳ pending | 2/5 folds complete |
+
+Early read: fold 2 is already ahead of both finished folds on blend (0.0651 vs 0.0680/0.0763),
+so this HRNet-decoder recipe may be competitive with or better than the simple-decoder champion
+recipe (§3b mean ≈0.0740) on matched NEW-ep104 SSL -- but per the §3/§3b spread (±13-30%),
+no fold-0-or-partial number here should be trusted over the eventual 5-fold mean.
 
 ---
 
