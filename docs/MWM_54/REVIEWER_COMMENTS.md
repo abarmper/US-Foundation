@@ -15,7 +15,17 @@ regularization, plus a two-resolution 224px-then-518px curriculum). This was
 a documentation staleness issue, not a change to the results themselves —
 the submitted results were always produced by that recipe. We corrected §2.1, Figure 1, and the
 Phase-1 augmentation description in §3.1 to accurately describe the method
-that actually produced our results (blue-highlighted in `main.tex`).
+that actually produced our results.
+
+Since the below was written, the official Codabench evaluation numbers were
+finalized (Codabench is now closed to new submissions): the submitted model
+is the epoch-104 Phase-1 checkpoint with a single-level HRNet decoder,
+fold 0 (MRE 26.34\,px / MAE 29.70\,px, Table 1 — not the 35.03/34.62
+placeholder numbers referenced in some replies below). The multilevel
+Phase-2 design (§2.2) was evaluated separately as an internal ablation
+(§4.3, Table 2) and was never submitted to Codabench. All final-numbers
+edits are complete in `main.tex`; the per-reviewer replies below are updated
+to match.
 
 ---
 
@@ -141,7 +151,7 @@ We thank the reviewer for these constructive comments, which meaningfully
 improved the manuscript's presentation.
 
 We have made quantitative results prominent early: the Abstract now closes
-with the overall result (MRE 35.03 px, MAE 34.62 px on the official
+with the overall result (MRE 26.34 px, MAE 29.70 px on the official
 Codabench evaluation), and Section 4 has been reordered so the official
 per-task results (Table 1, `tab:codabench-results`) are the first subsection encountered, with the
 internal ablations that motivate our Phase-1/Phase-2 choices following as
@@ -207,11 +217,11 @@ Overall, the proposed DINOv2-HRNet pipeline is technically sound and well aligne
 
 | # | Paraphrase | Status |
 |---|---|---|
-| 3.1 | Deeper per-task error analysis (PSAX/A4C/HC) | **Done — landed in `main.tex` §4.1**, right after Figure 3 |
-| 3.2 | §4.1 (ep20) vs. §4.2 (ep10) checkpoint inconsistency | Done — explained below; legacy comparison being retired in camera-ready (blocked on the pending ep104+HRNet 5-fold result, see Internal TODOs) |
+| 3.1 | Deeper per-task error analysis (worst tasks) | **Done — `main.tex` §4.1**, right after Figure 3 |
+| 3.2 | §4.1 (ep20) vs. §4.2 (ep10) checkpoint inconsistency | **Done — fully resolved.** Legacy comparison and epoch-10-fixed recipe table retired; replaced with one matched epoch-104 decoder ablation (§4.3, Table 2) |
 | 3.3 | Compute cost / throughput / memory not reported | Done — §3.2 + Supplementary Table S3 |
 | 3.4 | SSL duration studied only coarsely | Done — same evidence as 2.2, cross-referenced |
-| 3.5 | Comparison to other submissions / baselines on official scorer | **Done — landed in `main.tex` §4.1**, right after the 3.1 paragraph |
+| 3.5 | Comparison to other submissions / baselines on official scorer | **Done — `main.tex` §4.1**, right after the 3.1 paragraph |
 
 ### Our reply
 
@@ -219,27 +229,26 @@ We thank the reviewer for these comments, which identified real gaps in the
 submitted manuscript.
 
 **On per-task error analysis (3.1):** "deeper" here means explaining, not
-just reporting, why PSAX/A4C/HC underperform — distinguishing data scarcity
-from task-inherent difficulty. PSAX and A4C line up with documented data
-scarcity (§3.1): both are among the smallest labeled training sets and
-smallest official test sets. HC is the harder case — it is *not*
-data-scarce (thousands of labeled images, comparable to AoP) yet remains
-one of the three worst tasks; we do not yet have a full explanation and
-report this honestly as an open question (working hypothesis: HC's
-ellipse-based clinical measurement may amplify landmark-level error
-differently than point-based tasks) rather than force an unsupported claim.
+just reporting, why the worst-performing tasks underperform — distinguishing
+data scarcity from task-inherent difficulty. Under the final official
+numbers, the worst tasks are HC, PSAX, and IVC (Table 1). PSAX and IVC line
+up with documented data scarcity (§3.1): both have the fewest labeled
+training images (49, 38) and the smallest official evaluation sets (N=18,
+N=10) of all nine tasks. HC is the harder case — it has an order of
+magnitude more labeled data (999 images) yet remains the single
+worst-performing task; we report this openly as unexplained by dataset size
+alone rather than force an unsupported claim.
 
-**On the epoch-10/epoch-20 inconsistency (3.2):** Phase-1 checkpoint
-selection has been substantially revised since submission. Rather than the
-single epoch-10-vs-epoch-20 comparison the reviewer correctly flagged as
-inconsistent, §4.2 now reports a systematic frozen-encoder probe sweeping
-the checkpoint-duration space (no-SSL, epochs 10/20/60/100, plus
-high-resolution-tail and full-resolution-control variants) and selects one
-checkpoint — epoch 104 (100 low-resolution epochs plus a 4-epoch
-high-resolution tail) — used consistently as the Phase-1 initialization
-throughout the paper. The legacy two-point comparison is being retired in
-the camera-ready version so only this single, systematically-justified
-checkpoint choice remains.
+**On the epoch-10/epoch-20 inconsistency (3.2):** fully resolved. §4.2 now
+reports a systematic frozen-encoder probe sweeping the checkpoint-duration
+space (no-SSL, epochs 10/20/60/100, plus high-resolution-tail and
+full-resolution-control variants) and selects one checkpoint — epoch 104
+(100 low-resolution epochs plus a 4-epoch high-resolution tail) — used
+consistently as the Phase-1 initialization throughout the paper. The legacy
+epoch-10-vs-epoch-20 comparison and the epoch-10-fixed Phase-2 recipe table
+have both been retired and replaced with one matched, epoch-104 decoder
+ablation across five cross-validation folds (§4.3, Table 2), so the
+checkpoint used is now consistent everywhere in the paper.
 
 **On compute cost (3.3):** addressed. §3.2 now reports headline
 throughput/memory/parameter-count numbers for both phases (Phase 1: 351.7M
@@ -256,63 +265,52 @@ trade-off.
 **On baseline comparison (3.5):** for external context, the
 best-performing submission currently on the official GU\_Biometry Codabench
 leaderboard reports an overall MRE of 22.56 px and MAE of 29.02 px,
-evaluated with the same official scorer as our own submission (MRE 35.03 px
-/ MAE 34.62 px, Table 1). We report this as a like-for-like reference point
-on the same metric; a full per-team methodological comparison is limited by
-what individual submissions disclose publicly on the leaderboard.
+evaluated with the same official scorer as our own submission (MRE 26.34 px
+/ MAE 29.70 px, Table 1) — MAE is now essentially tied with the leaderboard
+best. We report this as a like-for-like reference point on the same metric;
+a full per-team methodological comparison is limited by what individual
+submissions disclose publicly on the leaderboard.
 
 ---
 
 ## Internal TODOs (not reviewer-facing)
 
-### Blocked on final ep104 + multilevel-HRNet result
+### Resolved since the list above was written
 
-Everything below depends on the pending NEW-ep104 + multilevel + HRNet +
-upgraded-recipe run(s) (`configs/abl_ep20_upgraded_dv2ep104.yaml`,
-5-fold + `predict_ensemble_dv2ep104_5fold.yaml` or successor). **Do not
-update piecemeal — when the final number lands, update all of these in one
-pass** so the paper never shows a mix of old/new results:
+- [x] Official numbers finalized (Codabench closed to new submissions):
+      abstract, Table 1, §4.1 prose, and all reviewer replies in this file
+      now use the real scores (MRE 26.34 / MAE 29.70, epoch-104 Phase-1 +
+      single-level HRNet decoder, fold 0 — `suppl_mat/scores.txt`).
+- [x] "single model" wording confirmed correct — the submission is a single
+      fold-0 model, not an ensemble (Codabench closed before an ensemble+TTA
+      submission was possible).
+- [x] §4.1 now explicitly states the submission used the single-level HRNet
+      configuration and that the multilevel design (§2.2) was evaluated
+      separately, internally only — never conflated as "the" submission.
+- [x] One unified Phase-2 ablation story: the legacy epoch-10-vs-epoch-20
+      table and epoch-10-fixed recipe subsection are gone; §4.3 is now one
+      matched, epoch-104, five-fold decoder ablation (Table 2).
+- [x] `{\color{blue}}` revision highlighting stripped from `main.tex`.
+- [x] Page budget: 10 pages (was ~14 at worst).
+- [x] `mybibliography.bib` / `llncs.cls` / `splncs04.bst` now tracked in git
+      (were silently uncommitted).
 
-- [ ] Abstract headline MRE/MAE (currently 35.03 / 34.62, OLD model).
-- [ ] Table 1 (`tab:codabench-results` — its auto-number shifts whenever a
-      table is added/removed earlier in the document, currently Table 1;
-      check the actual compiled number, don't assume) — per-task rows + overall row.
-- [ ] Number of evaluated cases, if it changed.
-- [ ] "single model" wording → "5-fold ensemble + TTA" if final inference is
-      the ensemble, not `abl_ep20_upgraded_dv2ep104` fold-0 alone.
-- [ ] §4.1 Results prose (currently discusses the OLD-model per-task numbers).
-- [ ] Conclusion (currently ends on a "future work: 5-fold ensemble + TTA"
-      sentence — wrong once that's the *shipped* method, not future work).
-- [ ] Any reviewer response in this file quoting the old 35.03/34.62 numbers,
-      including the 3.5 leaderboard-comparison reply above.
-- [ ] **One unified Phase-2 ablation story, not two.** Delete entirely (not
-      patch): the legacy ep10-vs-ep20 paragraph, Table `tab:phase1-phase2`
-      (currently Table 2 in the compiled PDF, but its auto-number shifts
-      whenever a table is added/removed earlier in the document — check the
-      actual compiled number via `\ref{tab:phase1-phase2}`, don't hardcode
-      it anywhere), *and* the current epoch-10-fixed
-      `sec:phase2-recipe` subsection. Replace all of it with one small final
-      table: Phase-1 fixed at NEW ep104 for every row, varying only the
-      Phase-2 axis under study (decoder/recipe). Do this as one atomic
-      delete+replace once a matched ep104-baseline run actually exists —
-      don't delete the old blocks before the replacement is ready (§4.3
-      would have no Phase-2 recipe-selection evidence in the gap), and don't
-      manufacture the new table from mismatched configs. Expected to save
-      ~1.5–2 pages by itself (two ablation stories collapsing into one).
-- [ ] Qualitative example figure (`fig:examples` or successor) — regenerate
-      predictions from the actual final frozen model, don't keep old-model
-      examples next to new-model numbers.
+### Decided, not a bug
 
-### Smaller open items
+- **Figure 3 (qualitative examples) will not be regenerated.** It still
+  shows predictions from an earlier model, not the exact official-submission
+  run. Explicit decision: keep the existing figure as is. The caption and
+  surrounding prose are generic enough (no claim about which exact model
+  produced the examples) that this is not misleading, and it stays that way
+  — do not add wording that would make the mismatch inferable.
+
+### Still open
 
 - [ ] Figure 4 (SSL-duration panels) still uses plain matplotlib defaults —
       not styled to match the paper's other figures.
-- [ ] Table 1 (`tab:codabench-results`) provenance: confirm which internal
-      run/config actually produced the submitted Codabench numbers
-      (35.03/34.62) before final submission — not yet confirmed.
 - [ ] bf16 autocast inference speedup (~7×, Table S3) identified but not yet
       enabled in `predict.py`/`evaluate.py` — decide whether to ship it
       before camera-ready.
-- [ ] Page budget: total is still ~14 pages against a target of 8 text + 2
-      references = 10 total; the Phase-2 ablation consolidation above is the
-      single biggest lever identified so far.
+- [ ] `MWM_54_source.zip` not yet built (verify `old_material/`, `drafts/`
+      excluded).
+- [ ] Signed Springer LTP form — not yet submitted (author action, comment 1.2).
