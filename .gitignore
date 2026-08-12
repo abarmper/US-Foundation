@@ -294,3 +294,14 @@ docs/*.zip
 *.h5
 *.hdf5
 
+
+# ============================================================
+# Internal working notes: full change log + raw/negative results.
+# Kept local only (they narrate every method change and every bad
+# experiment); the public-facing docs are README / RUNBOOK /
+# EXPERIMENTS / docs/ARCHITECTURE.
+# ============================================================
+METHOD_CHANGES.md
+FIXES.md
+EXPERIMENT_RESULTS.md
+docs/fixes/
