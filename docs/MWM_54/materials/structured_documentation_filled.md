@@ -8,27 +8,27 @@
 
 **Team name:**
 
-Luna    [TO VERIFY - confirm the exact team name as registered on CodaBench]
+apbiomed1234
 
 **CodaBench account / team account:**
 
-annapan    [TO VERIFY - confirm against the account name shown under My Submissions on CodaBench competition 17560; this is the name the preliminary ranking table uses]
+annapan
 
 **Corresponding author:**
 
-[TO FILL - not recorded in the project repository. The paper lists A. Panagiotakopoulou as first author and G. K. Matsopoulos as senior author; choose whichever is the corresponding author of record.]
+Anna Panagiotakopoulou
 
 **Contact email:**
 
-[TO FILL - must match the corresponding author selected above. Addresses on the paper: annapan@biomed.ntua.gr, amparmperis@biomed.ntua.gr, vassiliskat@biomed.ntua.gr, gmatsopoulos@biomed.ntua.gr]
+annapan@biomed.ntua.gr
 
 **Final Docker image name and immutable digest:**
 
-[TO FILL - Docker Hub repository name and the immutable sha256 digest of the image referenced by the final submission.json. Not recorded in the project repository; read it back from Docker Hub or from `docker inspect --format='{{index .RepoDigests 0}}' <image>`.]
+apbiomed1234/fu-biometry@sha256:d8cec8c12dfddd98cab1383f11fbecd5962c7f92c27f0f04b293814218f79806
 
 **Final CodaBench submission ID selected for reporting:**
 
-[TO FILL - the submission ID of the accepted final-test entry, from the submission history on CodaBench competition 17560.]
+886072
 
 
 ## Detailed description
@@ -231,7 +231,20 @@ Per-task summary. All nine tasks are served by one network; only the head and it
   - PSAX (parasternal short axis): 4 landmarks, N=18, MRE 39.02 px, MAE 20.00
   - IVC (inferior vena cava): 2 landmarks, N=10, MRE 33.65 px, MAE 9.87
   - Overall (unweighted average over the nine tasks): N=619, MRE 26.34 px, MAE 29.70.
-[TO VERIFY - the figures above are the official VALIDATION-phase scores, which are the ones reported in our paper. The preliminary hidden-test figures published on CodaBench should be quoted here instead or in addition if the organizers expect final-test numbers; please copy them from the preliminary results table for our team.]
+These validation-phase figures are the ones reported in our paper.
+
+Hidden-test-phase evaluation, official CodaBench scorer, final submission ID 886072 (per-task N not shown in the platform's results table):
+  - HC: MRE 26.49 px, MAE 44.30
+  - FA: MRE 30.24 px, MAE 116.84
+  - fetal_femur: MRE 21.99 px, MAE 19.17
+  - FUGC: MRE 13.79 px, MAE 10.30
+  - AOP: MRE 65.01 px, MAE 71.92
+  - PLAX: MRE 20.32 px, MAE 10.54
+  - A4C: MRE 27.62 px, MAE 20.48
+  - PSAX: MRE 41.96 px, MAE 19.81
+  - IVC: MRE 28.49 px, MAE 17.67
+  - Overall (unweighted average over the nine tasks): MRE 30.66 px, MAE 36.78.
+This hidden-test result is the authoritative one for competition ranking; it is higher than the validation-phase figures on most tasks (most notably AOP: 65.01 vs 16.02 px), consistent with ordinary validation-to-test generalization gap rather than any known pipeline discrepancy. HC is a partial exception, improving from 49.07 to 26.49 px.
 
 Architectural constraint worth stating explicitly. Each forward pass executes exactly one task head, chosen by the batch's task identity. Every batch must therefore be task-homogeneous. This is enforced by a dedicated sampler during training and by per-image routing at inference; a conventional shuffling data loader would silently produce wrong results.
 

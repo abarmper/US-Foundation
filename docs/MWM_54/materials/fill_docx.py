@@ -25,7 +25,7 @@ import zipfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-DEFAULT_TEMPLATE = Path("/tmp/fub/11YkpZPaBchNjlee5b3d6Jx5oPJOm4Zck.bin")
+DEFAULT_TEMPLATE = HERE / "template_structured_documentation.docx"
 OUT_DOCX = HERE / "structured_documentation_filled.docx"
 OUT_MD = HERE / "structured_documentation_filled.md"
 
@@ -47,42 +47,42 @@ _TASK_LINES = "\n".join(
     for name, k, n, mre, mae in TASKS
 )
 
+# Hidden-test-phase results, final CodaBench submission 886072 (per-task N not
+# provided by the platform's results table at time of writing).
+TEST_TASKS = [
+    # task, MRE, MAE
+    ("HC", "26.49", "44.30"),
+    ("FA", "30.24", "116.84"),
+    ("fetal_femur", "21.99", "19.17"),
+    ("FUGC", "13.79", "10.30"),
+    ("AOP", "65.01", "71.92"),
+    ("PLAX", "20.32", "10.54"),
+    ("A4C", "27.62", "20.48"),
+    ("PSAX", "41.96", "19.81"),
+    ("IVC", "28.49", "17.67"),
+]
+_TEST_TASK_LINES = "\n".join(
+    f"  - {name}: MRE {mre} px, MAE {mae}" for name, mre, mae in TEST_TASKS
+)
+
 # --------------------------------------------------------------------------
 # Header block (placeholders 1-6)
 # --------------------------------------------------------------------------
 
-A1_TEAM_NAME = "Luna    [TO VERIFY - confirm the exact team name as registered on CodaBench]"
+A1_TEAM_NAME = "apbiomed1234"
 
-A2_ACCOUNT = (
-    "annapan    [TO VERIFY - confirm against the account name shown under "
-    "My Submissions on CodaBench competition 17560; this is the name the "
-    "preliminary ranking table uses]"
-)
+A2_ACCOUNT = "annapan"
 
-A3_CORRESPONDING = (
-    "[TO FILL - not recorded in the project repository. The paper lists "
-    "A. Panagiotakopoulou as first author and G. K. Matsopoulos as senior "
-    "author; choose whichever is the corresponding author of record.]"
-)
+A3_CORRESPONDING = "Anna Panagiotakopoulou"
 
-A4_EMAIL = (
-    "[TO FILL - must match the corresponding author selected above. "
-    "Addresses on the paper: annapan@biomed.ntua.gr, "
-    "amparmperis@biomed.ntua.gr, vassiliskat@biomed.ntua.gr, "
-    "gmatsopoulos@biomed.ntua.gr]"
-)
+A4_EMAIL = "annapan@biomed.ntua.gr"
 
 A5_DOCKER = (
-    "[TO FILL - Docker Hub repository name and the immutable sha256 digest of "
-    "the image referenced by the final submission.json. Not recorded in the "
-    "project repository; read it back from Docker Hub or from "
-    "`docker inspect --format='{{index .RepoDigests 0}}' <image>`.]"
+    "apbiomed1234/fu-biometry@sha256:"
+    "d8cec8c12dfddd98cab1383f11fbecd5962c7f92c27f0f04b293814218f79806"
 )
 
-A6_SUBMISSION_ID = (
-    "[TO FILL - the submission ID of the accepted final-test entry, from the "
-    "submission history on CodaBench competition 17560.]"
-)
+A6_SUBMISSION_ID = "886072"
 
 # --------------------------------------------------------------------------
 # Detailed description (placeholders 7-16)
@@ -250,7 +250,12 @@ Important note for reviewers reproducing this exactly. The submitted checkpoint 
 A16_ADDITIONAL = f"""Per-task summary. All nine tasks are served by one network; only the head and its landmark count differ. Official validation-phase evaluation (619 images, the official scorer) for the submitted model:
 {_TASK_LINES}
   - Overall (unweighted average over the nine tasks): N=619, MRE 26.34 px, MAE 29.70.
-[TO VERIFY - the figures above are the official VALIDATION-phase scores, which are the ones reported in our paper. The preliminary hidden-test figures published on CodaBench should be quoted here instead or in addition if the organizers expect final-test numbers; please copy them from the preliminary results table for our team.]
+These validation-phase figures are the ones reported in our paper.
+
+Hidden-test-phase evaluation, official CodaBench scorer, final submission ID 886072 (per-task N not shown in the platform's results table):
+{_TEST_TASK_LINES}
+  - Overall (unweighted average over the nine tasks): MRE 30.66 px, MAE 36.78.
+This hidden-test result is the authoritative one for competition ranking; it is higher than the validation-phase figures on most tasks (most notably AOP: 65.01 vs 16.02 px), consistent with ordinary validation-to-test generalization gap rather than any known pipeline discrepancy. HC is a partial exception, improving from 49.07 to 26.49 px.
 
 Architectural constraint worth stating explicitly. Each forward pass executes exactly one task head, chosen by the batch's task identity. Every batch must therefore be task-homogeneous. This is enforced by a dedicated sampler during training and by per-image routing at inference; a conventional shuffling data loader would silently produce wrong results.
 
