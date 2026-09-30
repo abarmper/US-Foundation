@@ -1,0 +1,33 @@
+# Produce a Codabench VALIDATION submission from the champion architecture's real
+# 5-fold ep104 ensemble (abl_ep20_simplehead_ml_dv2ep104[_fold1..4]), not the old
+# phase2_upgraded_fold* family submit_val.yaml/predict_ensemble.yaml default to.
+#
+# This is the one leak-free external check available (see EXPERIMENT_RESULTS.md
+# findings #16-18): none of these 5 members have ever seen data/data/val_data's 619
+# images, unlike every fold-0/5-fold internal number, which is built on the leaky
+# per-image StratifiedKFold split.
+#
+#   python -m gubiometry predict --config configs/submit_val_champion_ep104.yaml
+#   python -m gubiometry predict --config configs/submit_val_champion_ep104.yaml \
+#       -o predict.reduce=median -o predict.out_json=regression_predictions_median.json
+run_name: submit_val_champion_ep104
+phase: predict
+
+data:
+  data_root: data/data/train_data     # only used to rebuild members; images come from image_dir
+
+predict:
+  image_dir: data/data/val_data       # the challenge validation images (<task>/<file>)
+  member_run_dirs:
+    - runs/abl_ep20_simplehead_ml_dv2ep104
+    - runs/abl_ep20_simplehead_ml_dv2ep104_fold1
+    - runs/abl_ep20_simplehead_ml_dv2ep104_fold2
+    - runs/abl_ep20_simplehead_ml_dv2ep104_fold3
+    - runs/abl_ep20_simplehead_ml_dv2ep104_fold4
+  checkpoint_name: best_teacher_model.pth
+  tta_canvases: [490, 518, 546]        # multi-scale TTA (all % 14 == 0)
+  tta_intensity: true                  # + gamma views
+  average_space: coord
+  reduce: mean                         # or median
+  out_json: regression_predictions.json   # the zip's inner file must be named this (Codabench)
+  zip_output: true

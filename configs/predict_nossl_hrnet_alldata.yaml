@@ -1,0 +1,17 @@
+# Submission prediction for the all-data no-SSL HRNet model.
+# Single member (the all-data run) + multi-scale/intensity TTA, mean over TTA views.
+# Uses the FINAL EMA teacher (extracted to final_teacher_model.pth post-training).
+run_name: predict_nossl_hrnet_alldata
+phase: predict
+
+predict:
+  member_run_dirs:
+    - runs/nossl_hrnet_alldata
+  checkpoint_name: final_teacher_model.pth
+  image_dir: data/data/val_data       # challenge <task>/<file> layout, unlabeled
+  tta_canvases: [490, 518, 546]        # multi-scale TTA (all % 14 == 0)
+  tta_intensity: true
+  average_space: coord
+  reduce: mean
+  out_json: submission_nossl_hrnet_alldata.json
+  zip_output: true

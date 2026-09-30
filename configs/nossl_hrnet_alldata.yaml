@@ -1,0 +1,54 @@
+# No-SSL HRNet baseline (the Codabench point-scorer, p2_baseline_nossl) retrained on
+# 100% of the labeled data, with only 3 safe/metric-aligned Phase-2 deltas.
+#
+# Base = p2_baseline_nossl: off-the-shelf DINOv2-L (NON-register), single-level HRNet,
+# unfreeze 4, heatmap128, sample_temp0, llrd1.0, bs64, lr1e-4, canvas loss, fp16.
+# Deltas (only ones we're sure help / are metric-aligned, NOT tuned on the leaky metric):
+#   * amp_dtype: bf16          (over fp16)   -- strictly more stable, no downside
+#   * heatmap_size: 148        (over 128)    -- finer soft-argmax localization
+#   * loss_space: original     (over canvas) -- aligns L1 with the original-px MRE metric
+# (weight-decay exclusion on norms/biases is already automatic in build_optimizer.)
+#
+# Trains on all 6743 images (splits/all_train_split.json: train=all, val=holdout-val as a
+# leaky monitor only). No early stop; the FINAL EMA teacher is the artifact to submit
+# (extract latest_checkpoint.pth['teacher_state_dict'] -> final_teacher_model.pth).
+run_name: nossl_hrnet_alldata
+phase: phase2
+seed: 42
+phase1_weights: ""                 # NO SSL: off-the-shelf DINOv2, no Phase-1 adaptation
+
+model:
+  backbone:
+    name: dinov2_vitl14            # NON-register -- matches the point-scorer p2_baseline_nossl
+    unfreeze_last_n_blocks: 4
+  neck:
+    branch_width: [128, 96, 64]
+    dropout_p: 0.3
+    input_mode: single
+    shared_head: false
+    decoder: hrnet
+  heatmap_size: 148                # DELTA (was 128)
+
+data:
+  data_root: data/data/train_data
+  split_file: splits/all_train_split.json   # train = all 6743; val = leaky monitor
+  fold: null
+  batch_size: 64
+  num_workers: 8
+  canvas: 518
+  sample_temp: 0.0
+
+optim:
+  lr: 1.0e-4
+  encoder_lr_mult: 0.1
+  llrd_decay: 1.0
+  amp_dtype: bf16                  # DELTA (was fp16)
+  weight_decay: 1.0e-2
+  epochs: 35                       # fixed budget: reference converges on MRE by ~ep25-30
+                                   # (point-scorer's held-out best was ep26); take FINAL EMA teacher
+  warmup_epochs: 15
+  softargmax_temp: 10.0
+  loss_space: original             # DELTA (was canvas)
+  dsnt_lambda: 0.0
+  early_stop_patience: 0           # disable early stop
+  select_metric: challenge_blend   # only drives the leaky-monitor curve / best_teacher fallback

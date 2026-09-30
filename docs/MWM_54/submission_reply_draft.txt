@@ -1,0 +1,33 @@
+Subject: Re: FUB 2026 Post-Competition Materials — Team Luna (Codabench: annapan)
+
+Dear FUB 2026 Organizing Committee,
+
+This is to confirm that we have received your notice regarding the
+post-competition materials submission stage, and that we have successfully
+accessed the materials package via the Google Drive link.
+
+Our team details:
+  Team name:                Luna
+  Codabench account:        annapan
+  Preliminary rank:         31 (Leaderboard A and Leaderboard B)
+  Corresponding paper ID:   MWM_54
+  Materials named as:       31_annapan_54
+
+We are preparing all required materials (team information, structured
+documentation for all nine tasks, presentation slides, source code with
+README and environment specification, and the paper with the signed
+copyright form).
+
+Could you please confirm where the materials should be delivered? The
+downloaded package contains the templates but no submission instructions,
+and we could not find an upload destination on either CodaBench portal. If
+you would like them by email reply, we will attach the package here; if you
+prefer a shared cloud link or an upload folder, please let us know the
+address and we will submit within the August 28 deadline.
+
+Thank you very much for organising the challenge.
+
+Best regards,
+Alexandros Barmperis
+on behalf of Team Luna
+albarmper@gmail.com
