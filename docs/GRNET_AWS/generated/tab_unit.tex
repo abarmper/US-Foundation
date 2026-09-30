@@ -1,0 +1,8 @@
+SSL epoch, 224 px bulk (191,170 images) & 0.82 & 1.03 & \$5 & 100 epochs, phase1\_dinov2 \\
+SSL epoch, 518 px (tail / full-resolution) & 3.42 & 4.27 & \$20 & 45 epochs, 3 runs \\
+Paper SSL recipe (100 ep @224 + 4 ep @518) & 95.7 & 119.6 & \$551 & start to finish \\
+Phase-2 run, 4 blocks unfrozen & 8.76 & 10.94 & \$50 & mean of 22 runs, 45--150 ep \\
+Phase-2 run, all 24 blocks unfrozen & 19.59 & 24.49 & \$113 & mean of 5 runs \\
+Frozen-encoder probe, $\le$25 ep & 2.12 & 2.65 & \$12 & mean of 14 runs \\
+OOF inference, 6,743 images, 9 TTA views & 1.86 & 2.32 & \$11 & 0.99 s/image measured \\
+Test inference, 5 models $\times$ 9 views, 619 images & 0.67 & 0.84 & \$4 & measured \\

@@ -1,0 +1,14 @@
+{"kind": "phase2", "backbone": "dinov2_vitl14_reg", "res": 518, "bs": 64, "unfreeze": 4, "img_s": 85.16638358295305, "peak_gb": 29.24391222000122, "params_M": 312.198204, "trainable_M": 58.220604}
+{"kind": "phase2", "backbone": "dinov2_vitb14_reg", "res": 518, "bs": 64, "unfreeze": 4, "img_s": 152.5957930849242, "peak_gb": 23.76256513595581, "params_M": 93.196604, "trainable_M": 34.97222}
+{"kind": "phase2", "backbone": "dinov2_vitg14_reg", "res": 518, "bs": 64, "unfreeze": 4, "img_s": 33.7714372297429, "peak_gb": 44.0834641456604, "params_M": 1146.737212, "trainable_M": 123.599932}
+{"kind": "ssl", "backbone": "dinov2_vitl14_reg", "res": 224, "bs": 32, "accum": 8, "img_s": 66.80214196516694, "peak_gb": 36.043591022491455, "params_M": 304.372736}
+{"kind": "ssl", "backbone": "dinov2_vitl14_reg", "res": 518, "bs": 16, "accum": 16, "img_s": 15.965200934828179, "peak_gb": 60.2261266708374, "params_M": 304.372736}
+{"kind": "ssl", "backbone": "dinov2_vitb14_reg", "res": 224, "bs": 32, "accum": 8, "img_s": 177.2592407452225, "peak_gb": 15.883827209472656, "params_M": 86.583552}
+{"kind": "ssl", "backbone": "dinov2_vitb14_reg", "res": 518, "bs": 16, "accum": 16, "img_s": 43.34597742936071, "peak_gb": 27.284292221069336, "params_M": 86.583552}
+{"kind": "ssl", "backbone": "dinov2_vitg14_reg", "res": 224, "bs": 16, "accum": 16, "img_s": 19.044904199766364, "peak_gb": 61.707627296447754, "params_M": 1136.486912}
+{"kind": "ssl", "backbone": "dinov2_vitg14_reg", "res": 518, "bs": 4, "accum": 64, "img_s": 4.675225387746552, "peak_gb": 58.016857624053955, "params_M": 1136.486912}
+{"kind": "phase2", "backbone": "dinov2_vitl14_reg", "res": 518, "bs": 64, "unfreeze": 0, "img_s": 109.02237724811819, "peak_gb": 14.114942073822021, "params_M": 312.198204, "trainable_M": 7.825468}
+{"kind": "phase2", "backbone": "dinov2_vitb14_reg", "res": 518, "bs": 64, "unfreeze": 0, "img_s": 208.0868391993436, "peak_gb": 12.630359172821045, "params_M": 93.196604, "trainable_M": 6.613052}
+{"kind": "phase2", "backbone": "dinov2_vitg14_reg", "res": 518, "bs": 64, "unfreeze": 0, "img_s": 40.59107573596339, "peak_gb": 18.12828302383423, "params_M": 1146.737212, "trainable_M": 10.2503}
+{"kind": "ssl", "backbone": "dinov2_vitg14_reg", "res": 224, "bs": 32, "accum": 8, "error": "OOM on 80 GB"}
+{"kind": "ssl", "backbone": "dinov2_vitg14_reg", "res": 518, "bs": 8, "accum": 32, "error": "OOM on 80 GB"}

@@ -1,0 +1,43 @@
+\multicolumn{5}{l}{\textbf{WP0} -- Set-up, timing parity, H100 pilot} \\
+\quad Parity: 1 SSL epoch at 224 px + 1 at 518 px (ViT-L) & 1 & 4.2 & 4 & 5 \\
+\quad Parity: 1 Phase-2 run + 1 frozen probe (fold 0) & 1 & 10.9 & 11 & 14 \\
+\addlinespace[1pt]\multicolumn{3}{r}{\emph{WP0 subtotal}} & 15 & \textbf{19} \\\addlinespace[2pt]
+\multicolumn{5}{l}{\textbf{WP1} -- Leakage-free re-baselining (Q1)} \\
+\quad Phase-2, 6 reference configurations $\times$ 5 loop-grouped folds & 30 & 8.8 & 263 & 328 \\
+\quad Frozen probes, 12 existing encoders $\times$ 5 folds & 60 & 2.1 & 127 & 159 \\
+\quad Out-of-fold inference, 9-view TTA, 6 ensembles & 6 & 1.9 & 11 & 14 \\
+\addlinespace[1pt]\multicolumn{3}{r}{\emph{WP1 subtotal}} & 401 & \textbf{501} \\\addlinespace[2pt]
+\multicolumn{5}{l}{\textbf{WP2} -- SSL schedule, resolution and data (Q2)} \\
+\quad SSL bulk, 60 ep at 224 px, 2 new seeds & 2 & 49.2 & 98 & 123 \\
+\quad 518-px tails (5 ep) from ep20 and ep60, 2 new seeds & 4 & 17.1 & 68 & 85 \\
+\quad Tail sweep, seed 42: ep20/ep40 + 5 ep; ep20 + 2/10 ep & 4 & 18.8 & 75 & 94 \\
+\quad Full-resolution control, 518 px, ep31 $\rightarrow$ ep60 & 1 & 102.5 & 102 & 128 \\
+\quad Unlabeled-data scaling: 10/25/50 \% subsets (20 + 5 ep) & 3 & 33.5 & 100 & 126 \\
+\quad Frozen probes, 22 new checkpoints $\times$ 5 folds & 110 & 2.1 & 233 & 292 \\
+\quad Phase-2, top-3 SSL checkpoints $\times$ 5 folds & 15 & 8.8 & 131 & 164 \\
+\addlinespace[1pt]\multicolumn{3}{r}{\emph{WP2 subtotal}} & 809 & \textbf{1,012} \\\addlinespace[2pt]
+\multicolumn{5}{l}{\textbf{WP3} -- Encoder capacity ViT-B/L/g (Q3)} \\
+\quad ViT-B: SSL bulk, 60 ep at 224 px & 1 & 18.6 & 19 & 23 \\
+\quad ViT-B: 518-px tails (5 ep) from ep20 and ep60 & 2 & 6.3 & 13 & 16 \\
+\quad ViT-B: frozen probes, 3 encoders $\times$ 5 folds & 15 & 1.1 & 17 & 21 \\
+\quad ViT-B: Phase-2, no-SSL vs SSL $\times$ 5 folds & 10 & 4.9 & 49 & 61 \\
+\quad ViT-g: SSL bulk, 60 ep at 224 px & 1 & 172.7 & 173 & 216 \\
+\quad ViT-g: 518-px tails (5 ep) from ep20 and ep60 & 2 & 58.3 & 117 & 146 \\
+\quad ViT-g: frozen probes, 3 encoders $\times$ 5 folds & 15 & 5.7 & 85 & 107 \\
+\quad ViT-g: Phase-2, no-SSL vs SSL $\times$ 5 folds & 10 & 22.1 & 221 & 276 \\
+\addlinespace[1pt]\multicolumn{3}{r}{\emph{WP3 subtotal}} & 692 & \textbf{865} \\\addlinespace[2pt]
+\multicolumn{5}{l}{\textbf{WP4} -- Phase-2 design and objectives (Q4)} \\
+\quad Fine-tuning depth: 8 blocks $\times$ 5 folds & 5 & 10.8 & 54 & 67 \\
+\quad Fine-tuning depth: 12 blocks $\times$ 5 folds & 5 & 12.8 & 64 & 80 \\
+\quad Fine-tuning depth: all 24 blocks $\times$ 5 folds & 5 & 19.6 & 98 & 122 \\
+\quad Multi-level taps (2 variants) $\times$ 5 folds & 10 & 8.8 & 88 & 109 \\
+\quad Losses: measurement-aware (2 weights), Wing, smooth-L1 $\times$ 5 folds & 20 & 8.8 & 175 & 219 \\
+\quad Sampler temperature (0, 1) + strong augmentation $\times$ 5 folds & 15 & 8.8 & 131 & 164 \\
+\quad Best configuration, 2 extra seeds $\times$ 5 folds & 10 & 8.8 & 88 & 109 \\
+\quad Out-of-fold inference, 10 ensembles & 10 & 1.9 & 19 & 23 \\
+\addlinespace[1pt]\multicolumn{3}{r}{\emph{WP4 subtotal}} & 716 & \textbf{895} \\\addlinespace[2pt]
+\multicolumn{5}{l}{\textbf{WP5} -- Final ensembles, uncertainty, release} \\
+\quad ViT-L final: 5 folds $\times$ 3 seeds + all-data model & 16 & 8.8 & 140 & 175 \\
+\quad ViT-g final: 5 folds + all-data model & 6 & 22.1 & 132 & 166 \\
+\quad OOF + test inference, multi-scale/intensity TTA (4 ensembles) & 1 & 13.2 & 13 & 17 \\
+\addlinespace[1pt]\multicolumn{3}{r}{\emph{WP5 subtotal}} & 286 & \textbf{357} \\\addlinespace[2pt]

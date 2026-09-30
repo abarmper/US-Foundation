@@ -1,0 +1,119 @@
+{
+ "hardware": "1x NVIDIA A100-SXM4-80GB per job (shared 8-GPU node, 2x AMD EPYC 7J13)",
+ "ssl_vitl_224_epoch_h": {
+  "mean": 0.8207194444444444,
+  "median": 0.82,
+  "n": 100,
+  "img_per_s": 64.6370562413059
+ },
+ "ssl_vitl_518_epoch_h": {
+  "mean": 3.4151049382716048,
+  "median": 3.410277777777778,
+  "n": 45,
+  "img_per_s": 15.533604339472243
+ },
+ "ssl_paper_recipe_h": 95.71305555555556,
+ "phase2_unfreeze4": {
+  "runs": [
+   "abl_ep20_sampletemp0",
+   "abl_ep20_simplehead",
+   "abl_ep20_simplehead_dv2ep20",
+   "abl_ep20_simplehead_ml_dv2ep104",
+   "abl_ep20_simplehead_ml_dv2ep104_fold1",
+   "abl_ep20_simplehead_ml_dv2ep104_fold2",
+   "abl_ep20_simplehead_ml_dv2ep104_fold3",
+   "abl_ep20_simplehead_ml_dv2ep104_fold4",
+   "abl_ep20_simplehead_ml_dv2ep20",
+   "abl_ep20_simplehead_ml_dv2tailep60ep5",
+   "abl_ep20_upgraded",
+   "abl_ep20_upgraded_dv2ep104",
+   "abl_ep20_upgraded_dv2ep104_fold1",
+   "abl_ep20_upgraded_dv2ep104_fold2",
+   "abl_ep20_upgraded_dv2ep104_fold3",
+   "abl_ep20_upgraded_dv2ep104_fold4",
+   "abl_ep20_upgraded_dv2ep20",
+   "abl_ep20_upgraded_fold1",
+   "abl_ep20_upgraded_fold2",
+   "abl_ep20_upgraded_fold3",
+   "abl_ep20_upgraded_fold4",
+   "phase2_upgraded_fold0"
+  ],
+  "n": 22,
+  "epochs_mean": 85.95454545454545,
+  "epochs_min": 45,
+  "epochs_max": 150,
+  "min_per_epoch_median": 6.083333333333333,
+  "run_hours_mean": 8.755012626262626,
+  "run_hours_median": 7.663888888888889,
+  "run_hours_max": 15.833333333333334
+ },
+ "phase2_fullft": {
+  "runs": [
+   "abl_baseline_dv2ep104_fullft_fold0",
+   "abl_baseline_dv2ep104_fullft_fold1",
+   "abl_baseline_dv2ep104_fullft_fold2",
+   "abl_baseline_dv2ep104_fullft_fold3",
+   "abl_baseline_dv2ep104_fullft_fold4"
+  ],
+  "n": 5,
+  "epochs_mean": 71.8,
+  "epochs_min": 60,
+  "epochs_max": 84,
+  "min_per_epoch_median": 13.1,
+  "run_hours_mean": 19.590555555555554,
+  "run_hours_median": 15.48,
+  "run_hours_max": 38.29
+ },
+ "probe_frozen": {
+  "runs": [
+   "probe_dv2_ep10",
+   "probe_dv2_ep100",
+   "probe_dv2_ep104",
+   "probe_dv2_ep20",
+   "probe_dv2_ep60",
+   "probe_dv2_tail_ep60_ep10",
+   "probe_dv2_tail_ep60_ep5",
+   "probe_dv2fullres_ep10",
+   "probe_dv2fullres_ep20",
+   "probe_dv2fullres_ep30",
+   "probe_legacy_ep10",
+   "probe_legacy_ep20",
+   "probe_noreg_nossl",
+   "probe_nossl"
+  ],
+  "n": 14,
+  "epochs_mean": 20.285714285714285,
+  "epochs_min": 14,
+  "epochs_max": 25,
+  "min_per_epoch_median": 4.908333333333333,
+  "run_hours_mean": 2.120694444444444,
+  "run_hours_median": 1.8844444444444446,
+  "run_hours_max": 4.284722222222222
+ },
+ "predict": {
+  "_launch_predict_challenge_dv2ep104.out": {
+   "images": 619,
+   "members": 1,
+   "tta_views": 9,
+   "minutes": 10.433333333333334
+  },
+  "_launch_predict_challenge_dv2ep20.out": {
+   "images": 619,
+   "members": 1,
+   "tta_views": 9,
+   "minutes": 9.683333333333334
+  },
+  "_launch_predict_ensemble_dv2ep104_median.out": {
+   "images": 619,
+   "members": 5,
+   "tta_views": 9,
+   "minutes": 40.2
+  },
+  "_launch_predict_nossl_hrnet_alldata.out": {
+   "images": 619,
+   "members": 1,
+   "tta_views": 9,
+   "minutes": 10.583333333333334
+  }
+ }
+}

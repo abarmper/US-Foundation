@@ -1,0 +1,174 @@
+{
+ "retrieved": "2026-09-30",
+ "ec2_published": "2026-09-25T17:45:21Z",
+ "ec2_csv_published": "2026-09-25T17:45:21Z",
+ "s3_published": "2026-09-28T23:04:16Z",
+ "egress_published": "2026-09-16T13:22:08Z",
+ "ec2_usd_per_h": {
+  "p4de.24xlarge": {
+   "us-east-1": 27.44705,
+   "us-west-2": 27.44705,
+   "eu-central-1": 34.29122,
+   "il-central-1": 35.57346,
+   "ap-northeast-1": 37.6223,
+   "ap-southeast-1": 32.93646
+  },
+  "p4d.24xlarge": {
+   "us-east-1": 21.957642,
+   "us-east-2": 21.95764,
+   "us-west-2": 21.95764,
+   "ca-central-1": 25.25174,
+   "eu-central-1": 27.43298,
+   "eu-west-1": 23.71569,
+   "eu-west-2": 28.54493,
+   "eu-north-1": 23.71569,
+   "ap-northeast-1": 30.09784,
+   "ap-northeast-2": 30.41028,
+   "ap-south-1": 26.3444,
+   "ap-southeast-1": 26.34917,
+   "ap-southeast-2": 28.54493,
+   "sa-east-1": 35.5569
+  },
+  "p5.4xlarge": {
+   "us-east-1": 6.88,
+   "us-east-2": 6.88,
+   "us-west-2": 6.88,
+   "eu-west-2": 8.944,
+   "eu-north-1": 7.3616,
+   "ap-northeast-1": 8.6,
+   "ap-south-1": 8.256,
+   "ap-southeast-2": 8.944,
+   "ap-southeast-3": 9.4944,
+   "sa-east-1": 11.5584
+  },
+  "p5.48xlarge": {
+   "us-east-1": 55.04,
+   "us-east-2": 55.04,
+   "us-west-2": 55.04,
+   "us-west-1": 68.8,
+   "ca-central-1": 63.296,
+   "eu-west-2": 71.552,
+   "eu-north-1": 58.8928,
+   "ap-northeast-1": 68.8,
+   "ap-northeast-2": 75.9552,
+   "ap-south-1": 66.048,
+   "ap-southeast-2": 71.552,
+   "ap-southeast-3": 75.9552,
+   "sa-east-1": 92.4672
+  },
+  "g6e.xlarge": {
+   "us-east-1": 1.861,
+   "us-east-2": 1.861,
+   "us-west-2": 1.861,
+   "eu-central-1": 2.327,
+   "eu-north-1": 1.974,
+   "eu-south-2": 1.961,
+   "me-central-1": 2.283,
+   "ap-northeast-1": 2.699,
+   "ap-northeast-2": 2.288,
+   "ap-south-1": 2.235
+  },
+  "g7e.2xlarge": {
+   "us-east-1": 3.36312,
+   "us-east-2": 3.36312,
+   "us-west-2": 3.36312,
+   "eu-central-1": 5.71915,
+   "eu-west-2": 5.84531,
+   "eu-north-1": 4.85157,
+   "eu-south-2": 3.54384,
+   "ap-northeast-1": 4.87752,
+   "ap-northeast-2": 4.13478,
+   "ap-south-1": 5.49303,
+   "ap-southeast-3": 6.40239
+  },
+  "t3.large": {
+   "us-east-1": 0.0832,
+   "us-east-2": 0.0832,
+   "us-west-2": 0.0832,
+   "us-west-1": 0.0992,
+   "ca-central-1": 0.0928,
+   "eu-central-1": 0.096,
+   "eu-west-1": 0.0912,
+   "eu-west-2": 0.0944,
+   "eu-west-3": 0.0944,
+   "eu-north-1": 0.0864,
+   "eu-south-1": 0.0958,
+   "eu-south-2": 0.0912,
+   "eu-central-2": 0.1056,
+   "il-central-1": 0.0958,
+   "me-central-1": 0.1003,
+   "ap-northeast-1": 0.1088,
+   "ap-northeast-2": 0.104,
+   "ap-south-1": 0.0896,
+   "ap-southeast-1": 0.1056,
+   "ap-southeast-2": 0.1056,
+   "ap-southeast-3": 0.1056,
+   "sa-east-1": 0.1344
+  }
+ },
+ "ec2_spec_us_east_1": {
+  "p5.48xlarge": {
+   "usd_per_h": 55.04,
+   "gpus": "8",
+   "gpu_memory": "640 GB HBM3",
+   "vcpu": "192",
+   "memory": "2048 GiB",
+   "storage": "8 x 3840 GB SSD"
+  },
+  "p4de.24xlarge": {
+   "usd_per_h": 27.44705,
+   "gpus": "8",
+   "gpu_memory": "640 GB HBM2e",
+   "vcpu": "96",
+   "memory": "1152 GiB",
+   "storage": "8 x 1000 SSD"
+  },
+  "g7e.2xlarge": {
+   "usd_per_h": 3.36312,
+   "gpus": "1",
+   "gpu_memory": "96 GB",
+   "vcpu": "8",
+   "memory": "64 GiB",
+   "storage": "1 x 1900 NVMe SSD"
+  },
+  "p4d.24xlarge": {
+   "usd_per_h": 21.957642,
+   "gpus": "8",
+   "gpu_memory": "320 GB HBM2",
+   "vcpu": "96",
+   "memory": "1152 GiB",
+   "storage": "8 x 1000 SSD"
+  },
+  "t3.large": {
+   "usd_per_h": 0.0832,
+   "gpus": "",
+   "gpu_memory": "NA",
+   "vcpu": "2",
+   "memory": "8 GiB",
+   "storage": "EBS only"
+  },
+  "g6e.xlarge": {
+   "usd_per_h": 1.861,
+   "gpus": "1",
+   "gpu_memory": "48 GB",
+   "vcpu": "4",
+   "memory": "32 GiB",
+   "storage": "1 x 250 GB NVMe SSD"
+  },
+  "p5.4xlarge": {
+   "usd_per_h": 6.88,
+   "gpus": "1",
+   "gpu_memory": "80 GB HBM3",
+   "vcpu": "16",
+   "memory": "256 GiB",
+   "storage": "1 x 3840 GB SSD"
+  }
+ },
+ "ebs_gp3_usd_gb_month": 0.08,
+ "ebs_snapshot_usd_gb_month": 0.05,
+ "s3_standard_usd_gb_month": 0.023,
+ "egress_usd_gb": 0.09,
+ "usd_per_eur": 1.1355,
+ "usd_per_eur_date": "2026-09-29",
+ "usd_per_eur_source": "ECB euro foreign exchange reference rate"
+}

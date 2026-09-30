@@ -1,0 +1,58 @@
+To: helpdesk@aws.grnet.gr
+Cc: Prof. George K. Matsopoulos <gmatsopoulos@biomed.ntua.gr>
+Subject: Application for AWS resources - US-Foundation (NTUA, Biomedical Engineering Laboratory)
+Attachment: proposal.pdf (Detailed Project Document)
+
+Dear GRNET AWS team,
+
+We would like to apply for AWS resources for the following research project.
+
+1. Purpose of the request
+   Project name: US-Foundation: Scaling Self-Supervised Ultrasound Foundation Models
+   for Generalizable Multi-Task Biometry.
+   Summary: We develop a single AI model that automatically places the anatomical
+   landmarks behind nine routine ultrasound measurements (fetal biometry, labour
+   progression, cardiac and vascular dimensions). It adapts the DINOv2 vision foundation
+   model to ultrasound with self-supervised learning on 191,170 unlabeled frames and then
+   trains an HRNet-style landmark decoder on 6,768 labeled images; the first version is
+   described in our camera-ready paper for the MICCAI 2026 Foundation Model Challenge for
+   Ultrasound Biometry. The requested resources fund a six-month programme of
+   396 GPU jobs that (Q1) re-evaluates the method with leakage-free,
+   cine-loop-grouped cross-validation, (Q2) determines how long, at which resolution and
+   on how much data the encoder should be adapted, (Q3) scales the encoder from ViT-B
+   (87M parameters) to ViT-g (1.14B), and (Q4) optimizes the landmark decoder; code and
+   models will be released openly.
+   Resources: one Amazon EC2 p4de.24xlarge instance (8x NVIDIA A100-80GB, On-Demand),
+   run only in bursts (612 instance-hours in total), a t3.large control node,
+   a 12-hour p5.4xlarge (H100) pilot, 1 TB Amazon EBS gp3, 1 TB Amazon S3 and
+   300 GB of data transfer, in US East (N. Virginia), us-east-1, the Region
+   with the lowest A100-80GB price.
+
+2. Scientific supervisor
+   Prof. George K. Matsopoulos, Professor, School of Electrical and Computer Engineering,
+   National Technical University of Athens.
+
+3. Institution / laboratory
+   Biomedical Engineering Laboratory, School of Electrical and Computer Engineering,
+   National Technical University of Athens (NTUA), Athens, Greece.
+
+4. Duration
+   6 months (with the possibility of renewal), from the activation of the credits.
+
+5. Estimated cost (AWS Pricing Calculator, us-east-1, On-Demand)
+   $17,580.47 for 6 months ($2,930.08 per month), i.e.
+   EUR 15,482.58 at the ECB reference rate of 2026-09-29 (1 EUR = 1.1355 USD).
+   Requested amount: EUR 15,483.
+   AWS Pricing Calculator estimate: <PASTE THE SHARED ESTIMATE LINK HERE>
+
+The attached Detailed Project Document gives the scientific background, the work plan,
+the measured timings on which every line of the estimate is based, and the cost-control
+measures. Publications resulting from these resources will state that "the resources
+were granted with the support of GRNET", and their citation records will be sent to
+helpdesk@aws.grnet.gr.
+
+Kind regards,
+Alexandros Barmperis
+PhD candidate, Biomedical Engineering Laboratory, NTUA
+on behalf of the scientific supervisor, Prof. George K. Matsopoulos
+amparmperis@biomed.ntua.gr
