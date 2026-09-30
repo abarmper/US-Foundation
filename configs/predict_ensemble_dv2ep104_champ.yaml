@@ -1,0 +1,21 @@
+# 5-fold ENSEMBLE prediction on the real challenge val set -> submission.zip.
+# Members: the champion recipe (NEW ep104 SSL, multilevel-concat simple decoder,
+# unfreeze 4) trained on all 5 kfold_v1 folds. Coordinate-space averaging across
+# 5 members x multi-scale/intensity TTA.
+run_name: predict_ensemble_dv2ep104_champ
+phase: predict
+
+predict:
+  member_run_dirs:
+    - runs/abl_ep20_simplehead_ml_dv2ep104          # fold 0
+    - runs/abl_ep20_simplehead_ml_dv2ep104_fold1
+    - runs/abl_ep20_simplehead_ml_dv2ep104_fold2
+    - runs/abl_ep20_simplehead_ml_dv2ep104_fold3
+    - runs/abl_ep20_simplehead_ml_dv2ep104_fold4
+  checkpoint_name: best_teacher_model.pth
+  image_dir: data/data/val_data          # challenge <task>/<file> layout, unlabeled
+  tta_canvases: [490, 518, 546]          # multi-scale TTA (all % 14 == 0)
+  tta_intensity: true
+  average_space: coord                    # robust across members x TTA
+  out_json: submission_ensemble_dv2ep104.json
+  zip_output: true

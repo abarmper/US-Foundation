@@ -167,6 +167,11 @@ class PredictConfig:
     tta_intensity: bool = False
     average_space: str = "coord"        # "coord" | "heatmap"
     reduce: str = "mean"                # "mean" | "median" (across members x TTA views)
+    member_reduce: str = ""             # "" -> flat pool of member x TTA views (uses `reduce`).
+                                        # "mean"/"median" -> HIERARCHICAL (coord space only):
+                                        # TTA-mean within each member first, then this reducer
+                                        # ACROSS members (median => a failed fold-model is ONE
+                                        # outlier vote, not one-per-view). Outlier-robust.
     oof: bool = False                   # out-of-fold: each fold member predicts only its held-out val
     out_json: str = "regression_predictions.json"   # zip always contains regression_predictions.json (Codabench)
     zip_output: bool = True

@@ -84,7 +84,8 @@ def _predict_target(members, tgt, cfg, canvases, device):
     img = read_rgb(tgt["abs_path"])
     h, w = img.shape[:2]
     pred_px = _predict_one(members, tgt["task_id"], img, cfg.predict.average_space,
-                           canvases, cfg.predict.tta_intensity, cfg.predict.reduce)
+                           canvases, cfg.predict.tta_intensity, cfg.predict.reduce,
+                           cfg.predict.member_reduce)
     norm = pred_px / np.array([w, h], dtype=np.float64)
     return {
         "image_path": tgt["image_path"],
@@ -111,15 +112,29 @@ def _reduce(coord_list, reduce):
     return np.median(stack, axis=0) if reduce == "median" else np.mean(stack, axis=0)
 
 
+def _member_views_px(model, mcfg, task, img, views, h, w, device):
+    """All TTA-view predictions of ONE member, decoded to original px: list of (K,2)."""
+    temp = mcfg.optim.softargmax_temp
+    out = []
+    for v in views:
+        t = v["tensor"].unsqueeze(0).to(device)
+        logits = model.forward_phase2(t, task).float()
+        coords = soft_argmax_coords(logits, temp, v["canvas"]).cpu().numpy()[0]
+        out.append(inverse_letterbox_kps(coords, h, w, v["canvas"]))
+    return out
+
+
 @torch.no_grad()
-def _predict_one(members, task, img, average_space, canvases, intensity, reduce="mean"):
+def _predict_one(members, task, img, average_space, canvases, intensity, reduce="mean",
+                 member_reduce=""):
     h, w = img.shape[:2]
     views = make_tta_views(img, canvases, intensity)
     device = next(members[0][0].parameters()).device
     coord_list = []
 
     if average_space == "heatmap":
-        # average logits across members per view, then one soft-argmax per view
+        # average logits across members per view, then one soft-argmax per view.
+        # (Members are already fused here, so member_reduce does not apply.)
         temp = members[0][1].optim.softargmax_temp
         for v in views:
             t = v["tensor"].unsqueeze(0).to(device)
@@ -132,14 +147,19 @@ def _predict_one(members, task, img, average_space, canvases, intensity, reduce=
             coord_list.append(inverse_letterbox_kps(coords, h, w, v["canvas"]))
         return _reduce(coord_list, reduce)
 
-    # coordinate-space: one prediction per (member, view)
+    # coordinate-space
+    if member_reduce:
+        # HIERARCHICAL: TTA-mean within each member first, then combine the per-member
+        # predictions with `member_reduce`. With member_reduce="median", a fold-model that
+        # blows one image contributes a single outlier vote (not one per TTA view), so the
+        # median across members can reject it -- unlike the flat pool below.
+        member_preds = [_reduce(_member_views_px(model, mcfg, task, img, views, h, w, device), "mean")
+                        for model, mcfg in members]
+        return _reduce(member_preds, member_reduce)
+
+    # FLAT: pool every (member, view) prediction and reduce together
     for model, mcfg in members:
-        temp = mcfg.optim.softargmax_temp
-        for v in views:
-            t = v["tensor"].unsqueeze(0).to(device)
-            logits = model.forward_phase2(t, task).float()
-            coords = soft_argmax_coords(logits, temp, v["canvas"]).cpu().numpy()[0]
-            coord_list.append(inverse_letterbox_kps(coords, h, w, v["canvas"]))
+        coord_list.extend(_member_views_px(model, mcfg, task, img, views, h, w, device))
     return _reduce(coord_list, reduce)
 
 
